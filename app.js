@@ -1,11 +1,13 @@
 const express = require('express');
 require('dotenv').config();
-
 require('./src/config/database');
 
 const app = express();
-
 app.use(express.json());
+
+const usuarioRoutes = require('./src/routes/usuarioRoutes');
+
+app.use('/usuarios', usuarioRoutes);
 
 // Rota teste para ver se a api está conectad ao banco
 app.get('/', (req, res) => {
