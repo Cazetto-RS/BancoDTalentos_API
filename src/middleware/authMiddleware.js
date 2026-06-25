@@ -28,11 +28,19 @@ const autenticar = async (req, res, next) => {
     }
 };
 
+const verificarPermissao = (req, res, next) => {
+    if (req.usuario && req.usuario.cargo === 'admin' || 'rh'){
+        next();
+    } else {
+        return res.status(403).json({erro: 'Acesso negado. Recurso exclusivo para funcionários.'})
+    }
+}
+
 const verificarAdmin = (req, res, next) => {
     if (req.usuario && req.usuario.cargo === 'admin'){
         next();
     } else {
-        return res.status(403).json({erro: 'Acesso negado. Recurso exclusivo para Administradores'})
+        return res.status(403).json({erro: 'Acesso negado. Recurso exclusivo para Administradores.'})
     }
 };
 

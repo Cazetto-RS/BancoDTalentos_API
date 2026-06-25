@@ -77,6 +77,35 @@ const UsuarioModel = {
         return rows;
     },
 
+    atualizarInformacoes: async (id, { nome_completo, email, senha_hash }) => {
+        const queryText = `
+        UPDATE usuarios
+        SET nome_completo = COALESCE($1, nome_completo), email = COALESCE($2, email), senha_hash = COALESCE($3, senha_hash)
+        WHERE id = $4
+        RETURNING id, nome_completo, email, cargo, criado_em;  
+    `;
+        const { rows } = await db.query(queryText, [nome_completo || null, email || null, senha_hash || null, id]);
+        return rows[0];
+    },
+    deletarUsuario: async (id) => {
+        const queryText = `
+        DELETE FROM usuarios
+        WHERE id = $1
+        RETURNING id;
+        `
+        const { rows } = await db.query(queryText, [id]);
+        return rows[0];
+    },
+    // Função para pegar somente a senha, foi criada para o deletarUsuario Controller afim de preserver a segurança
+    buscarSenhaHash: async (id) => {
+        const queryText = `
+        SELECT senha_hash FROM usuarios WHERE id = $1;
+        `
+        const { rows } = await db.query(queryText, [id]);
+        return rows[0]
+    },
+
+
 
     // Área de sessoes
     criarSessao: async (usuario_id, token) => {

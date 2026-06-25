@@ -57,7 +57,7 @@ const usuarioController = {
             const { nome } = req.query;
 
             if (!nome) {
-                return res.status(404).json({ erro: 'O parâmetro nome é obrigatório.'});
+                return res.status(404).json({ erro: 'O parâmetro nome é obrigatório.' });
             }
 
             const usuario = await UsuarioModel.buscarPorNome(nome);
@@ -65,7 +65,7 @@ const usuarioController = {
             return res.json(usuario);
         } catch (error) {
             console.error('Erro ao buscar nome do usuário: ', error);
-            return res.status(500).json({ erro: 'Erro interno ao buscar usuário.'})
+            return res.status(500).json({ erro: 'Erro interno ao buscar usuário.' })
         }
     },
 
@@ -75,33 +75,33 @@ const usuarioController = {
             return res.json(usuario);
         } catch (error) {
             console.error('Erro ao buscar todos os usuários: ', error);
-            return res.status(500).json({erro: 'Erro interno ao buscar todos os usuários.'})
+            return res.status(500).json({ erro: 'Erro interno ao buscar todos os usuários.' })
         }
     },
 
     login: async (req, res) => {
         try {
-            const {email, senderSenha} = req.body; // não faça pergunta do pq o senderSenha, tava sem criatividade e inventei isso
+            const { email, senderSenha } = req.body; // não faça pergunta do pq o senderSenha, tava sem criatividade e inventei isso
             const senhaFornecida = req.body.senha || senderSenha;
 
-            if (!email || !senhaFornecida){
-                return res.status(400).json({erro: 'E-mail e senha não campos obrigatórios.'});
+            if (!email || !senhaFornecida) {
+                return res.status(400).json({ erro: 'E-mail e senha não campos obrigatórios.' });
             }
 
             const usuario = await UsuarioModel.buscarPorEmail(email);
             if (!usuario) {
-                return res.status(401).json({erro: 'E-mail ou senha inválidos.'});
+                return res.status(401).json({ erro: 'E-mail ou senha inválidos.' });
             }
 
             const senhaValida = await bcrypt.compare(senhaFornecida, usuario.senha_hash);
             if (!senhaValida) {
-                return res.status(401).json({erro: 'E-mail ou senha inválidos.'})
+                return res.status(401).json({ erro: 'E-mail ou senha inválidos.' })
             }
 
             const token = jwt.sign(
-                {id: usuario.id, email: usuario.email, cargo: usuario.cargo},
+                { id: usuario.id, email: usuario.email, cargo: usuario.cargo },
                 process.env.JWT_SECRET,
-                {expiresIn: '1d'}
+                { expiresIn: '1d' }
             );
 
             await UsuarioModel.criarSessao(usuario.id, token);
@@ -118,25 +118,25 @@ const usuarioController = {
             });
         } catch (error) {
             console.error('Erro ao realizar o login', error);
-            return res.status(500).json({erro: 'Erro interno no servidor ao realizar login.'});
+            return res.status(500).json({ erro: 'Erro interno no servidor ao realizar login.' });
         }
     },
 
     registrarPorAdmin: async (req, res) => {
         try {
-            const {nome_completo, email, senha, cargo} = req.body;
+            const { nome_completo, email, senha, cargo } = req.body;
 
-            if (!['admin', 'rh'].includes(cargo)){
-                return res.status(400).json({erro: 'Cargo inválido. Escolha entre "admin" e "rh".'});
+            if (!['admin', 'rh'].includes(cargo)) {
+                return res.status(400).json({ erro: 'Cargo inválido. Escolha entre "admin" e "rh".' });
             }
 
-            if (!nome_completo || !email || !senha){
-                return res.status(400).json({erro: 'Todos os campos devem ser preenchidos.'});
+            if (!nome_completo || !email || !senha) {
+                return res.status(400).json({ erro: 'Todos os campos devem ser preenchidos.' });
             }
 
             const usuarioExistente = await UsuarioModel.buscarPorEmail(email);
             if (usuarioExistente) {
-                return res.status(400).json({erro: 'Já existe um usuário com este e-mail.'});
+                return res.status(400).json({ erro: 'Já existe um usuário com este e-mail.' });
             }
 
             const salt = await bcrypt.genSalt(10);
@@ -155,7 +155,82 @@ const usuarioController = {
             });
         } catch (error) {
             console.error('Erro ao criar conta coorporativa: ', error);
-            return res.status(500).json({erro: 'Erro interno ao criar usuário.'})
+            return res.status(500).json({ erro: 'Erro interno ao criar usuário.' })
+        }
+    },
+
+    atualizarInformacoes: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const idUsuarioLogado = req.usuario.id;
+
+            if (parseInt(id) !== idUsuarioLogado) {
+                return res.status(403).json({ erro: 'Acesso negado. Você só pode alterar informações do próprio perfil.' });
+            }
+
+            const { nome_completo, email, senha } = req.body;
+
+            if (email) {
+                const usuarioExistente = await UsuarioModel.buscarPorEmail(email);
+                if (usuarioExistente && usuarioExistente.id !== idUsuarioLogado) {
+                    return res.status(400).json({ erro: 'Este e-mail já está vinculado a outra conta.' });
+                }
+            }
+
+            let senha_hash = null;
+            if (senha) {
+                const salt = await bcrypt.genSalt(10);
+                senha_hash = await bcrypt.hash(senha, salt);
+            }
+
+            const usuarioAtualizado = await UsuarioModel.atualizarInformacoes(id, {
+                nome_completo,
+                email,
+                senha_hash,
+            });
+
+            return res.json({
+                mensagem: 'Perfil atualizado com sucesso.',
+                dados: usuarioAtualizado
+            });
+        } catch (error) {
+            console.error('Erro ao atualizar perfil.', error);
+            return res.status(500).json({ erro: 'Erro interno ao atualizar perfil del usuário.' });
+        }
+    },
+
+    deletarUsuario: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const idUsuarioLogado = req.usuario.id;
+            const senha = req.headers['confirma-senha'];
+
+            if (!senha) {
+                return res.status(400).json({ erro: 'A confirmação de senha é obrigatória. Envie o cabeçalho x-confirma-senha.' });
+            }
+
+            if (parseInt(id) !== idUsuarioLogado) {
+                return res.status(403).json({ erro: 'Acesso negado. Você só pode deletar o seu próprio perfil.' });
+            }
+
+            const usuario = await UsuarioModel.buscarSenhaHash(id);
+
+            if (!usuario) {
+                return res.status(404).json({ erro: 'Usuário não encontrado.' });
+            }
+
+            const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
+            if (!senhaValida) {
+                return res.status(401).json({ erro: 'Senha incorreta. Operação de exclusão cancelada.' });
+            }
+
+            await UsuarioModel.deletarUsuario(id);
+
+            return res.json({ mensagem: 'Sua conta e todos os dados vinculados foram excluídos com sucesso.' });
+
+        } catch (error) {
+            console.error('Erro ao deletar perfil:', error);
+            return res.status(500).json({ erro: 'Erro interno ao deletar perfil.' });
         }
     }
 };
