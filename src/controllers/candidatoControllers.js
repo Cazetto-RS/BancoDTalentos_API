@@ -14,7 +14,7 @@ const CandidatosController = {
             });
         } catch (error) {
             console.error('Erro ao salvar informações básicas do perfil: ', error);
-            return res.status(500).json({erro: 'Erro interno ao salvar informações.'})
+            return res.status(500).json({ erro: 'Erro interno ao salvar informações.' })
         }
     },
 
@@ -24,15 +24,32 @@ const CandidatosController = {
             const perfil = await CandidatoModel.buscarPorUsuarioId(usuario_id);
 
             if (!perfil) {
-                return res.status(404).json({mensagem: 'Perfil inexistente.'});
+                return res.status(404).json({ mensagem: 'Perfil inexistente.' });
             }
 
             return res.json(perfil);
         } catch (error) {
             console.error('Erro ao buscar perfil: ', error);
-            return res.status(500).json({erro: 'Erro interno ao buscar perfil.'});
+            return res.status(500).json({ erro: 'Erro interno ao buscar perfil.' });
         }
     },
+
+    buscarCultura: async (req, res) => {
+        try {
+            const usuario_id = req.usuario.id;
+            const perfil = await CandidatoModel.buscarPorUsuarioId(usuario_id);
+
+            if (!perfil) {
+                return res.status(404).json({ mensagem: 'Perfil inexistente.' });
+            }
+
+            return res.json(perfil);
+        } catch (error) {
+            console.error('Erro ao buscar perfil: ', error);
+            return res.status(500).json({ erro: 'Erro interno ao buscar perfil.' });
+        }
+    },
+
 
     salvarCultura: async (req, res) => {
         try {
@@ -42,7 +59,7 @@ const CandidatosController = {
             const candidato = await CandidatoModel.buscarPorUsuarioId(usuario_id);
 
             if (!candidato) {
-                return res.status(400).json({erro: 'Você precisa preencher todas as informações.'});
+                return res.status(400).json({ erro: 'Você precisa preencher todas as informações.' });
             }
 
             const culturaSalvar = await CandidatoModel.salvarOuAtualizarCultura(candidato.id, dadosCultura);
@@ -53,7 +70,7 @@ const CandidatosController = {
             });
         } catch (error) {
             console.error('Erro ao salvar cultura do candidato.', error);
-            return res.status(500).json({erro: 'Erro interno ao salvar cultura do candidato.'});
+            return res.status(500).json({ erro: 'Erro interno ao salvar cultura do candidato.' });
         }
     }
 };

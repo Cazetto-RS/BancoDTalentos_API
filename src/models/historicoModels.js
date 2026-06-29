@@ -54,12 +54,12 @@ const HistoricoModels = {
     },
 
     buscarExperienciasPorCandidatoId: async (candidato_id) => {
-        const { rows } = await db.query('SELECT * FROM experiencias WHERE candidato_id = $1 ORDER BY data_inicio DESC:', [candidato_id]);
+        const { rows } = await db.query('SELECT * FROM experiencias WHERE candidato_id = $1 ORDER BY data_inicio DESC', [candidato_id]);
         return rows;
     },
 
     buscarFormacoesPorCandidatoId: async (candidato_id) => {
-        const { rows } = await db.query('SELECT * FROM formacoes WHERE candidato_id = $1 ORDER BY data_inicio DESC:', [candidato_id]);
+        const { rows } = await db.query('SELECT * FROM formacoes WHERE candidato_id = $1 ORDER BY data_inicio DESC', [candidato_id]);
         return rows;
     },
 

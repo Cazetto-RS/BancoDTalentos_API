@@ -160,7 +160,47 @@ const HistoricoControllers = {
             console.error('Erro interno ao deletar formação.', error);
             return res.status(500).json({ error: 'Erro interno ao deletar formação.' });
         }
-    }
+    },
+
+    buscarExperiencias: async (req, res) => {
+        try {
+            const usuario_id = req.usuario.id;
+
+            const candidato = await CandidatoModels.buscarPorUsuarioId(usuario_id);
+            if (!candidato) {
+                return res.status(400).json({erro: 'Perfil do candidato não encontrado'});
+            }
+
+            const experiencias = await HistoricoModels.buscarExperienciasPorCandidatoId(candidato.id);
+
+            return res.json({
+                experiencias
+            })
+        } catch (error) {
+            console.error('Erro ao obter histórico completo', error);
+            return res.status(500).json({erro: 'Erro interno ao buscar histórico.'})
+        }
+    },
+
+    buscarFormacoes: async (req, res) => {
+        try {
+            const usuario_id = req.usuario.id;
+
+            const candidato = await CandidatoModels.buscarPorUsuarioId(usuario_id);
+            if (!candidato) {
+                return res.status(400).json({erro: 'Perfil do candidato não encontrado'});
+            }
+
+            const formacoes = await HistoricoModels.buscarFormacoesPorCandidatoId(candidato.id);
+
+            return res.json({
+                formacoes
+            })
+        } catch (error) {
+            console.error('Erro ao obter histórico completo', error);
+            return res.status(500).json({erro: 'Erro interno ao buscar histórico.'})
+        }
+    },
 };
 
 module.exports = HistoricoControllers

@@ -50,7 +50,7 @@ const CandidatoModel = {
 
     buscarCulturaCandidatos: async (candidato_id) => {
         const queryText = `
-        SELECT * FROM cultura_candidatos
+        SELECT * FROM cultura_candidato
         WHERE candidato_id = $1;
         `
         const { rows } = await db.query(queryText, [candidato_id]);
