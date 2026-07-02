@@ -44,4 +44,4 @@ const verificarAdmin = (req, res, next) => {
     }
 };
 
-module.exports = {autenticar, verificarAdmin};
+module.exports = {autenticar, verificarAdmin, verificarPermissao};
