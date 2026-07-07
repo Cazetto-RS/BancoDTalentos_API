@@ -109,6 +109,10 @@ const UsuarioModel = {
 
     // Área de sessoes
     criarSessao: async (usuario_id, token) => {
+
+        await db.query("DELETE FROM sessoes WHERE criado_em < NOW() - INTERVAL '30 days';")
+        await db.query("DELETE FROM sessoes WHERE usuario_id = $1;", [usuario_id])
+
         const queryText = `
         INSERT INTO sessoes (usuario_id, token)
         VALUES ($1, $2)
