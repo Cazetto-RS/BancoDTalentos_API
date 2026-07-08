@@ -10,12 +10,14 @@ const candidatoRoutes = require('./src/routes/candidatosRoutes');
 const historicoRoutes = require('./src/routes/historicoRoutes');
 const vagasRoutes = require('./src/routes/vagasRoutes');
 const candidaturasRoutes = require('./src/routes/candidaturaRoutes');
+const habilidadesRoutes = require('./src/routes/habilidadesRoutes');
 
 app.use('/usuarios', usuarioRoutes);
 app.use('/candidatos', candidatoRoutes);
 app.use('/historico', historicoRoutes);
 app.use('/vagas', vagasRoutes);
 app.use('/candidaturas', candidaturasRoutes);
+app.use('/habilidades', habilidadesRoutes)
 
 // Rota teste para ver se a api está conectad ao banco
 app.get('/', (req, res) => {
