@@ -22,7 +22,24 @@ const vagasModels = {
 
     buscarTodos: async () => {
         const queryText = `
-        SELECT * FROM vagas ORDER BY criado_em DESC
+        SELECT 
+                v.*,
+                COALESCE(
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'habilidade_id', hv.habilidade_id,
+                            'nome', h.nome,
+                            'categoria', h.categoria,
+                            'obrigatoria', hv.obrigatoria
+                        )
+                    ) FILTER (WHERE hv.habilidade_id IS NOT NULL), 
+                    '[]'::json
+                ) AS habilidades
+        FROM vagas v
+        LEFT JOIN habilidades_vaga hv ON v.id = hv.vaga_id
+        LEFT JOIN habilidades h ON hv.habilidade_id = h.id
+        GROUP BY v.id
+        ORDER BY v.criado_em DESC
         `
         const { rows } = await db.query(queryText);
         return rows;
@@ -33,7 +50,7 @@ const vagasModels = {
         SELECT * FROM vagas WHERE id = $1;
         `
         const { rows } = await db.query(queryText, [id]);
-        return rows;
+        return rows[0];
     },
 
     atualizarVaga: async (id, { titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status }) => {
