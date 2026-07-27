@@ -136,6 +136,10 @@ const HistoricoControllers = {
             if (!deletada) {
                 return res.status(404).json({ erro: 'Experiência não encontrada ou já excluída.' });
             }
+
+            return res.json({
+                mensagem: 'Experiência excluída com sucesso!'
+            });
         } catch (error) {
             console.error('Erro interno ao deletar experiência.', error);
             return res.status(500).json({ error: 'Erro interno ao deletar experiência.' });
@@ -156,6 +160,10 @@ const HistoricoControllers = {
             if (!deletada) {
                 return res.status(404).json({ erro: 'Formação não encontrada ou já excluída.' });
             }
+
+            return res.json({
+                mensagem: 'Formação excluída com sucesso!'
+            });
         } catch (error) {
             console.error('Erro interno ao deletar formação.', error);
             return res.status(500).json({ error: 'Erro interno ao deletar formação.' });
@@ -168,7 +176,7 @@ const HistoricoControllers = {
 
             const candidato = await CandidatoModels.buscarPorUsuarioId(usuario_id);
             if (!candidato) {
-                return res.status(400).json({erro: 'Perfil do candidato não encontrado'});
+                return res.status(400).json({ erro: 'Perfil do candidato não encontrado' });
             }
 
             const experiencias = await HistoricoModels.buscarExperienciasPorCandidatoId(candidato.id);
@@ -178,7 +186,7 @@ const HistoricoControllers = {
             })
         } catch (error) {
             console.error('Erro ao obter histórico completo', error);
-            return res.status(500).json({erro: 'Erro interno ao buscar histórico.'})
+            return res.status(500).json({ erro: 'Erro interno ao buscar histórico.' })
         }
     },
 
@@ -188,7 +196,7 @@ const HistoricoControllers = {
 
             const candidato = await CandidatoModels.buscarPorUsuarioId(usuario_id);
             if (!candidato) {
-                return res.status(400).json({erro: 'Perfil do candidato não encontrado'});
+                return res.status(400).json({ erro: 'Perfil do candidato não encontrado' });
             }
 
             const formacoes = await HistoricoModels.buscarFormacoesPorCandidatoId(candidato.id);
@@ -198,7 +206,7 @@ const HistoricoControllers = {
             })
         } catch (error) {
             console.error('Erro ao obter histórico completo', error);
-            return res.status(500).json({erro: 'Erro interno ao buscar histórico.'})
+            return res.status(500).json({ erro: 'Erro interno ao buscar histórico.' })
         }
     },
 };

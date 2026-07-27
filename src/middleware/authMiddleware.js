@@ -25,15 +25,15 @@ const autenticar = async (req, res, next) => {
         }
 
         req.usuario = decodificar;
-        next();
+        return next();
     } catch (error) {
         return res.status(401).json({ erro: 'Token inválido ou expirado.' });
     }
 };
 
 const verificarPermissao = (req, res, next) => {
-    if (req.usuario && req.usuario.cargo === 'admin' || req.usuario.cargo === 'rh'){
-        next();
+    if (req.usuario && (req.usuario.cargo === 'admin' || req.usuario.cargo === 'rh')){
+        return next();
     } else {
         return res.status(403).json({erro: 'Acesso negado. Recurso exclusivo para funcionários.'})
     }
@@ -41,7 +41,7 @@ const verificarPermissao = (req, res, next) => {
 
 const verificarAdmin = (req, res, next) => {
     if (req.usuario && req.usuario.cargo === 'admin'){
-        next();
+        return next();
     } else {
         return res.status(403).json({erro: 'Acesso negado. Recurso exclusivo para Administradores.'})
     }

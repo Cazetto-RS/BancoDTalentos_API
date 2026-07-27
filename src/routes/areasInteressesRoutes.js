@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const AreasInteresseControllers = require('../controllers/AreasInteresseControllers');
+const AreasInteresseControllers = require('../controllers/areasInteresseControllers');
 const {autenticar, verificarPermissao} = require('../middleware/authMiddleware');
 
 router.get('/', autenticar, AreasInteresseControllers.buscarTodas);

@@ -16,7 +16,7 @@ const HabilidadesVagaModels = {
     buscarPorVaga: async (vaga_id) => {
         const queryText = `
         SELECT hv.habilidades, h.nome, h.categoria, hv.obrigatoria
-        FROM habilidades_vagas hv
+        FROM habilidades_vaga hv
         JOIN habilidades h ON hv.habilidade_id = h.id
         WHERE hv.vaga_id = $1
         `;
@@ -26,6 +26,8 @@ const HabilidadesVagaModels = {
 
     removerTodosDaVaga: async (vaga_id) => {
         await db.query('DELETE FROM habilidades_vaga WHERE vaga_id = $1', [vaga_id]);
+        const {rows} = await db.query(queryText, [vaga_id]);
+        return rows;
     }
 };
 

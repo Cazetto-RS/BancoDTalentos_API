@@ -37,13 +37,21 @@ const CandidatosController = {
     buscarCultura: async (req, res) => {
         try {
             const usuario_id = req.usuario.id;
-            const perfil = await CandidatoModel.buscarPorUsuarioId(usuario_id);
 
-            if (!perfil) {
+            const candidato = await CandidatoModel.buscarPorUsuarioId(usuario_id);
+
+            if (!candidato) {
                 return res.status(404).json({ mensagem: 'Perfil inexistente.' });
             }
 
-            return res.json(perfil);
+            const cultura = await CandidatoModel.buscarCulturaCandidatos(candidato.id)
+
+            if (!cultura) {
+                return res.status(404).json({ mensagem: 'Cultura inexistente.' });
+            }
+
+            return res.json(cultura);
+            
         } catch (error) {
             console.error('Erro ao buscar perfil: ', error);
             return res.status(500).json({ erro: 'Erro interno ao buscar perfil.' });

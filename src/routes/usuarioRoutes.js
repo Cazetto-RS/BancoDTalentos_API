@@ -8,13 +8,13 @@ router.post('/registrar', usuarioController.registrarCandidato);
 router.post('/login', usuarioController.login);
 
 // Rotas privadas
-router.get('/', autenticar, usuarioController.buscarTodos);
-router.get('/nome', autenticar, usuarioController.buscarPorNome);
 router.get('/:id', autenticar, usuarioController.buscarPorId);
 router.put('/atualizar/:id', autenticar, usuarioController.atualizarInformacoes);
 router.delete('/deletar/:id', autenticar, usuarioController.deletarUsuario);
 
 // Rotas exclusivas para admins
+router.get('/', autenticar, verificarAdmin, usuarioController.buscarTodos);
+router.get('/nome', autenticar, verificarAdmin, usuarioController.buscarPorNome);
 router.post('/admin/criar-usuario', autenticar, verificarAdmin, usuarioController.registrarPorAdmin);
 
 
