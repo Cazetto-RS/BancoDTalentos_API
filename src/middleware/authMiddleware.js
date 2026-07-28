@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
+const env = require('../config/env')
 
 const autenticar = async (req, res, next) => {
     try {
@@ -10,7 +11,7 @@ const autenticar = async (req, res, next) => {
         }
 
         const token = authHeader.split(' ')[1];
-        const decodificar = jwt.verify(token, process.env.JWT_SECRET);
+        const decodificar = jwt.verify(token, env.JWT_SECRET);
 
         // 💡 AJUSTADO: Além de buscar a sessão, garante que ela foi criada nos últimos 30 dias
         const queryText = `
