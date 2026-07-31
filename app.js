@@ -17,6 +17,7 @@ const habilidadesRoutes = require('./src/routes/habilidadesRoutes');
 const habilidadesCandidatoRoutes = require('./src/routes/habilidadesCandidatosRoutes');
 const areasInteresseRoutes = require('./src/routes/areasInteressesRoutes');
 const interesseCandidatoRoutes = require('./src/routes/interessesCandidatosRoutes');
+const errorMiddleware = require('./src/middleware/errorMiddleware');
 
 app.use('/usuarios', usuarioRoutes);
 app.use('/candidatos', candidatoRoutes);
@@ -27,6 +28,8 @@ app.use('/habilidades', habilidadesRoutes);
 app.use('/habilidades-candidatos', habilidadesCandidatoRoutes);
 app.use('/areas-interesse', areasInteresseRoutes);
 app.use('/interesse-candidato', interesseCandidatoRoutes)
+
+app.use(errorMiddleware)
 
 // Rota teste para ver se a api está conectad ao banco
 app.get('/', (req, res) => {

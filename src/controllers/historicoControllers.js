@@ -1,5 +1,6 @@
 const HistoricoModels = require('../models/historicoModels');
-const CandidatoModels = require('../models/candidatoModels')
+const CandidatoModels = require('../models/candidatoModels');
+const { sucesso, erro400, erro404, erro500 } = require('../utils/apiResponse');
 
 const HistoricoControllers = {
     salvarExperiencias: async (req, res) => {
@@ -13,18 +14,20 @@ const HistoricoControllers = {
 
             const candidato = await CandidatoModels.buscarPorUsuarioId(usuario_id);
             if (!candidato) {
-                return res.status(400).json({ erro: 'Perfil do candidato não encontrado.' });
+                return erro404(res, 'Perfil do candidato não encontrado.');
             }
 
             const salvas = await HistoricoModels.adicionarExperiencias(candidato.id, experiencias);
 
-            return res.json({
-                mensagem: 'Experiências profissionais salvas com sucesso',
-                dados: salvas
-            });
+            return sucesso(
+                res,
+                200,
+                'Experiências profissionais salvas com sucesso',
+                salvas
+            );
         } catch (error) {
             console.error('Erro ao salvar experiências:', error);
-            return res.status(500).json({ erro: 'Erro interno ao salvar experiências.' });
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
@@ -39,27 +42,29 @@ const HistoricoControllers = {
 
             const candidato = await CandidatoModels.buscarPorUsuarioId(usuario_id);
             if (!candidato) {
-                return res.status(400).json({ erro: 'Perfil de candidato não encontrado.' });
+                return erro404(res, 'Perfil de candidato não encontrado.');
             }
 
             for (const form of formacoes) {
                 if (form.turno && !['manhã', 'tarde', 'noite'].includes(form.turno)) {
-                    return res.status(400).json({ erro: 'Turno inválido' });
+                    return erro400(res, 'Turno inválido. Use: manhã, tarde ou noite.');
                 }
                 if (form.status && !['cursando', 'concluido', 'trancado'].includes(form.status)) {
-                    return res.status(400).json({ erro: 'Status inválido' });
+                    return erro400(res, 'Status inválido. Use: cursando, concluido ou trancado.');
                 }
             }
 
             const salvas = await HistoricoModels.adicionarFormacoes(candidato.id, formacoes);
 
-            return res.json({
-                mensagem: 'Formações acadêmicas salvas com sucesso.',
-                dados: salvas
-            });
+            return sucesso(
+                res,
+                200,
+                'Formações acadêmicas salvas com sucesso.',
+                salvas
+            );
         } catch (error) {
             console.error('Erro ao salvar formações:', error);
-            return res.status(500).json({ erro: 'Erro interno ao salvar histórico acadêmico.' });
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
@@ -71,21 +76,23 @@ const HistoricoControllers = {
 
             const candidato = await CandidatoModels.buscarPorUsuarioId(usuario_id);
             if (!candidato) {
-                return res.status(400).json({ erro: 'Perfil do candidato não encontrado.' });
+                return erro404(res, 'Perfil do candidato não encontrado.');
             }
 
             const atualizado = await HistoricoModels.editarExperiencias(id, candidato.id, dadosUpdate);
             if (!atualizado) {
-                return res.status(404).json({ erro: 'Erro interno ao editar experiência.' });
+                return erro404(res, 'Experiência não encontrada.');
             }
 
-            return res.json({
-                mensagem: 'Experiência editada com sucesso.',
-                dados: atualizado
-            });
+            return sucesso(
+                res,
+                200,
+                'Experiência editada com sucesso.',
+                atualizado
+            );
         } catch (error) {
             console.error('Erro interno ao editar experiência.', error);
-            return res.status(500).json({ erro: 'Erro interno editar experiências.' })
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
@@ -96,29 +103,31 @@ const HistoricoControllers = {
             const dadosUpdate = req.body;
 
             if (dadosUpdate.turno && !['manhã', 'tarde', 'noite'].includes(dadosUpdate.turno)) {
-                return res.status(400).json({ erro: 'Turno inválido.' });
+                return erro400(res, 'Turno inválido. Use: manhã, tarde ou noite.');
             }
             if (dadosUpdate.status && !['cursando', 'concluido', 'trancado'].includes(dadosUpdate.status)) {
-                return res.status(400).json({ erro: 'Status inválido.' });
+                return erro400(res, 'Status inválido. Use: cursando, concluido ou trancado.');
             }
 
             const candidato = await CandidatoModels.buscarPorUsuarioId(usuario_id);
             if (!candidato) {
-                return res.status(400).json({ erro: 'Perfil do candidato não encontrado.' });
+                return erro404(res, 'Perfil do candidato não encontrado.');
             }
 
             const atualizado = await HistoricoModels.editarFormacoes(id, candidato.id, dadosUpdate);
             if (!atualizado) {
-                return res.status(404).json({ erro: 'Erro interno ao editar formação.' });
+                return erro404(res, 'Formação não encontrada.');
             }
 
-            return res.json({
-                mensagem: 'Formação editada com sucesso.',
-                dados: atualizado
-            });
+            return sucesso(
+                res,
+                200,
+                'Formação editada com sucesso.',
+                atualizado
+            );
         } catch (error) {
             console.error('Erro interno ao editar formação.', error);
-            return res.status(500).json({ error: 'Erro interno ao editar formação.' })
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
@@ -129,20 +138,22 @@ const HistoricoControllers = {
 
             const candidato = await CandidatoModels.buscarPorUsuarioId(usuario_id);
             if (!candidato) {
-                return res.status(400).json({ erro: 'Perfil do candidato não encontrado.' })
+                return erro404(res, 'Perfil do candidato não encontrado.');
             }
 
             const deletada = await HistoricoModels.deletarExperiencias(id, candidato.id);
             if (!deletada) {
-                return res.status(404).json({ erro: 'Experiência não encontrada ou já excluída.' });
+                return erro404(res, 'Experiência não encontrada ou já excluída.');
             }
 
-            return res.json({
-                mensagem: 'Experiência excluída com sucesso!'
-            });
+            return sucesso(
+                res,
+                200,
+                'Experiência excluída com sucesso!'
+            );
         } catch (error) {
             console.error('Erro interno ao deletar experiência.', error);
-            return res.status(500).json({ error: 'Erro interno ao deletar experiência.' });
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
@@ -153,20 +164,22 @@ const HistoricoControllers = {
 
             const candidato = await CandidatoModels.buscarPorUsuarioId(usuario_id);
             if (!candidato) {
-                return res.status(400).json({ erro: 'Perfil do candidato não encontrado.' })
+                return erro404(res, 'Perfil do candidato não encontrado.');
             }
 
             const deletada = await HistoricoModels.deletarFormacoes(id, candidato.id);
             if (!deletada) {
-                return res.status(404).json({ erro: 'Formação não encontrada ou já excluída.' });
+                return erro404(res, 'Formação não encontrada ou já excluída.');
             }
 
-            return res.json({
-                mensagem: 'Formação excluída com sucesso!'
-            });
+            return sucesso(
+                res,
+                200,
+                'Formação excluída com sucesso!'
+            );
         } catch (error) {
             console.error('Erro interno ao deletar formação.', error);
-            return res.status(500).json({ error: 'Erro interno ao deletar formação.' });
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
@@ -176,17 +189,20 @@ const HistoricoControllers = {
 
             const candidato = await CandidatoModels.buscarPorUsuarioId(usuario_id);
             if (!candidato) {
-                return res.status(400).json({ erro: 'Perfil do candidato não encontrado' });
+                return erro404(res, 'Perfil do candidato não encontrado.');
             }
 
             const experiencias = await HistoricoModels.buscarExperienciasPorCandidatoId(candidato.id);
 
-            return res.json({
-                experiencias
-            })
+            return sucesso(
+                res,
+                200,
+                'Experiências listadas com sucesso.',
+                { experiencias }
+            );
         } catch (error) {
             console.error('Erro ao obter histórico completo', error);
-            return res.status(500).json({ erro: 'Erro interno ao buscar histórico.' })
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
@@ -196,19 +212,22 @@ const HistoricoControllers = {
 
             const candidato = await CandidatoModels.buscarPorUsuarioId(usuario_id);
             if (!candidato) {
-                return res.status(400).json({ erro: 'Perfil do candidato não encontrado' });
+                return erro404(res, 'Perfil do candidato não encontrado.');
             }
 
             const formacoes = await HistoricoModels.buscarFormacoesPorCandidatoId(candidato.id);
 
-            return res.json({
-                formacoes
-            })
+            return sucesso(
+                res,
+                200,
+                'Formações listadas com sucesso.',
+                { formacoes }
+            );
         } catch (error) {
             console.error('Erro ao obter histórico completo', error);
-            return res.status(500).json({ erro: 'Erro interno ao buscar histórico.' })
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 };
 
-module.exports = HistoricoControllers
+module.exports = HistoricoControllers;

@@ -1,6 +1,8 @@
 const UsuarioModel = require('../models/usuarioModels');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const env = require('../config/env');
+const { sucesso, erro400, erro401, erro403, erro404, erro500 } = require('../utils/apiResponse');
 
 const usuarioController = {
     registrarCandidato: async (req, res) => {
@@ -8,12 +10,12 @@ const usuarioController = {
             const { nome_completo, email, senha } = req.body;
 
             if (!nome_completo || !email || !senha) {
-                return res.status(400).json({ erro: 'Nome, e-mail e senha são campos obrigatórios' });
+                return erro400(res, 'Nome, e-mail e senha são campos obrigatórios');
             }
 
             const usuarioExistente = await UsuarioModel.buscarPorEmail(email);
             if (usuarioExistente) {
-                return res.status(400).json({ erro: 'Este e-mail já está vinculado a um perfil' });
+                return erro400(res, 'Este e-mail já está vinculado a um perfil');
             }
 
             const salt = await bcrypt.genSalt(10);
@@ -25,13 +27,15 @@ const usuarioController = {
                 senha_hash
             });
 
-            return res.status(201).json({
-                mensagem: 'Cadastro realizado com sucesso!',
-                dados: novoCandidato
-            });
+            return sucesso(
+                res,
+                201,
+                'Cadastro realizado com sucesso!',
+                novoCandidato
+            );
         } catch (error) {
             console.error('Erro ao registrar novo candidato... :', error);
-            return res.status(500).json({ erro: 'Erro interno ao processar cadastro, tente novamente :' });
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
@@ -42,13 +46,18 @@ const usuarioController = {
             const usuario = await UsuarioModel.buscarPorId(id);
 
             if (!usuario) {
-                return res.status(404).json({ erro: 'Usuário não encontrado.' });
+                return erro404(res, 'Usuário não encontrado.');
             }
 
-            return res.json(usuario);
+            return sucesso(
+                res,
+                200,
+                'Usuário encontrado com sucesso.',
+                usuario
+            );
         } catch (error) {
             console.error('Erro ao buscar usuário pelo ID: ', error);
-            return res.status(500).json({ erro: 'Erro interno ao buscar usuário.' })
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
@@ -57,68 +66,82 @@ const usuarioController = {
             const { nome } = req.query;
 
             if (!nome) {
-                return res.status(404).json({ erro: 'O parâmetro nome é obrigatório.' });
+                return erro400(res, 'O parâmetro nome é obrigatório.');
             }
 
             const usuario = await UsuarioModel.buscarPorNome(nome);
 
-            return res.json(usuario);
+            return sucesso(
+                res,
+                200,
+                'Usuário(s) encontrado(s) com sucesso.',
+                usuario
+            );
         } catch (error) {
             console.error('Erro ao buscar nome do usuário: ', error);
-            return res.status(500).json({ erro: 'Erro interno ao buscar usuário.' })
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
     buscarTodos: async (req, res) => {
         try {
             const usuario = await UsuarioModel.buscarTodos();
-            return res.json(usuario);
+            return sucesso(
+                res,
+                200,
+                'Usuários listados com sucesso.',
+                usuario
+            );
         } catch (error) {
             console.error('Erro ao buscar todos os usuários: ', error);
-            return res.status(500).json({ erro: 'Erro interno ao buscar todos os usuários.' })
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
     login: async (req, res) => {
         try {
-            const { email, senderSenha } = req.body; // não faça pergunta do pq o senderSenha, tava sem criatividade e inventei isso
+            const { email, senderSenha } = req.body;
             const senhaFornecida = req.body.senha || senderSenha;
 
             if (!email || !senhaFornecida) {
-                return res.status(400).json({ erro: 'E-mail e senha não campos obrigatórios.' });
+                return erro400(res, 'E-mail e senha são campos obrigatórios.');
             }
 
             const usuario = await UsuarioModel.buscarPorEmail(email);
             if (!usuario) {
-                return res.status(401).json({ erro: 'E-mail ou senha inválidos.' });
+                return erro401(res, 'E-mail ou senha inválidos.');
             }
 
             const senhaValida = await bcrypt.compare(senhaFornecida, usuario.senha_hash);
             if (!senhaValida) {
-                return res.status(401).json({ erro: 'E-mail ou senha inválidos.' })
+                return erro401(res, 'E-mail ou senha inválidos.');
             }
 
             const token = jwt.sign(
                 { id: usuario.id, email: usuario.email, cargo: usuario.cargo },
-                process.env.JWT_SECRET,
+                env.JWT_SECRET,
                 { expiresIn: '1d' }
             );
 
             await UsuarioModel.criarSessao(usuario.id, token);
 
-            return res.json({
-                mensagem: 'Login realizado com sucesso!',
-                token,
-                usuario: {
-                    id: usuario.id,
-                    nome_completo: usuario.nome_completo,
-                    email: usuario.email,
-                    cargo: usuario.cargo
+            return sucesso(
+                res,
+                200,
+                'Login realizado com sucesso!',
+                {
+                    token,
+                    usuario: {
+                        id: usuario.id,
+                        nome_completo: usuario.nome_completo,
+                        email: usuario.email,
+                        cargo: usuario.cargo
+                    }
                 }
-            });
+            );
         } catch (error) {
             console.error('Erro ao realizar o login', error);
-            return res.status(500).json({ erro: 'Erro interno no servidor ao realizar login.' });
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
@@ -127,16 +150,16 @@ const usuarioController = {
             const { nome_completo, email, senha, cargo } = req.body;
 
             if (!['admin', 'rh'].includes(cargo)) {
-                return res.status(400).json({ erro: 'Cargo inválido. Escolha entre "admin" e "rh".' });
+                return erro400(res, 'Cargo inválido. Escolha entre "admin" e "rh".');
             }
 
             if (!nome_completo || !email || !senha) {
-                return res.status(400).json({ erro: 'Todos os campos devem ser preenchidos.' });
+                return erro400(res, 'Todos os campos devem ser preenchidos.');
             }
 
             const usuarioExistente = await UsuarioModel.buscarPorEmail(email);
             if (usuarioExistente) {
-                return res.status(400).json({ erro: 'Já existe um usuário com este e-mail.' });
+                return erro400(res, 'Já existe um usuário com este e-mail.');
             }
 
             const salt = await bcrypt.genSalt(10);
@@ -149,13 +172,15 @@ const usuarioController = {
                 cargo
             });
 
-            return res.status(201).json({
-                mensagem: `Conta de ${cargo.toUpperCase()} criado com sucesso.`,
-                usuario: novoUsuario
-            });
+            return sucesso(
+                res,
+                201,
+                `Conta de ${cargo.toUpperCase()} criada com sucesso.`,
+                novoUsuario
+            );
         } catch (error) {
             console.error('Erro ao criar conta coorporativa: ', error);
-            return res.status(500).json({ erro: 'Erro interno ao criar usuário.' })
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
@@ -165,7 +190,7 @@ const usuarioController = {
             const idUsuarioLogado = req.usuario.id;
 
             if (parseInt(id) !== idUsuarioLogado) {
-                return res.status(403).json({ erro: 'Acesso negado. Você só pode alterar informações do próprio perfil.' });
+                return erro403(res, 'Acesso negado. Você só pode alterar informações do próprio perfil.');
             }
 
             const { nome_completo, email, senha } = req.body;
@@ -173,7 +198,7 @@ const usuarioController = {
             if (email) {
                 const usuarioExistente = await UsuarioModel.buscarPorEmail(email);
                 if (usuarioExistente && usuarioExistente.id !== idUsuarioLogado) {
-                    return res.status(400).json({ erro: 'Este e-mail já está vinculado a outra conta.' });
+                    return erro400(res, 'Este e-mail já está vinculado a outra conta.');
                 }
             }
 
@@ -189,13 +214,15 @@ const usuarioController = {
                 senha_hash,
             });
 
-            return res.json({
-                mensagem: 'Perfil atualizado com sucesso.',
-                dados: usuarioAtualizado
-            });
+            return sucesso(
+                res,
+                200,
+                'Perfil atualizado com sucesso.',
+                usuarioAtualizado
+            );
         } catch (error) {
             console.error('Erro ao atualizar perfil.', error);
-            return res.status(500).json({ erro: 'Erro interno ao atualizar perfil del usuário.' });
+            return erro500(res, 'Erro interno no servidor.');
         }
     },
 
@@ -206,33 +233,37 @@ const usuarioController = {
             const senha = req.headers['confirma-senha'];
 
             if (!senha) {
-                return res.status(400).json({ erro: 'A confirmação de senha é obrigatória. Envie o cabeçalho x-confirma-senha.' });
+                return erro400(res, 'A confirmação de senha é obrigatória. Envie o cabeçalho confirma-senha.');
             }
 
             if (parseInt(id) !== idUsuarioLogado) {
-                return res.status(403).json({ erro: 'Acesso negado. Você só pode deletar o seu próprio perfil.' });
+                return erro403(res, 'Acesso negado. Você só pode deletar o seu próprio perfil.');
             }
 
             const usuario = await UsuarioModel.buscarSenhaHash(id);
 
             if (!usuario) {
-                return res.status(404).json({ erro: 'Usuário não encontrado.' });
+                return erro404(res, 'Usuário não encontrado.');
             }
 
             const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
             if (!senhaValida) {
-                return res.status(401).json({ erro: 'Senha incorreta. Operação de exclusão cancelada.' });
+                return erro401(res, 'Senha incorreta. Operação de exclusão cancelada.');
             }
 
             await UsuarioModel.deletarUsuario(id);
 
-            return res.json({ mensagem: 'Sua conta e todos os dados vinculados foram excluídos com sucesso.' });
+            return sucesso(
+                res,
+                200,
+                'Sua conta e todos os dados vinculados foram excluídos com sucesso.'
+            );
 
         } catch (error) {
             console.error('Erro ao deletar perfil:', error);
-            return res.status(500).json({ erro: 'Erro interno ao deletar perfil.' });
+            return erro500(res, 'Erro interno no servidor.');
         }
     }
 };
 
-module.exports = usuarioController
+module.exports = usuarioController;
