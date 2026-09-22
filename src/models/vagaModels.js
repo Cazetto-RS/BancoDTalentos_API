@@ -26,8 +26,8 @@ const vagasModels = {
         SELECT 
                 v.*,
                 COALESCE(
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(DISTINCT
+                        JSONB_BUILD_OBJECT(
                             'habilidade_id', hv.habilidade_id,
                             'nome', h.nome,
                             'categoria', h.categoria,
@@ -36,11 +36,15 @@ const vagasModels = {
                     ) FILTER (WHERE hv.habilidade_id IS NOT NULL), 
                     '[]'::json
                 ) AS habilidades
+                , ai.nome AS area_nome
+                , COUNT(DISTINCT c.id)::int AS candidatos
         FROM vagas v
         LEFT JOIN habilidades_vaga hv ON v.id = hv.vaga_id
         LEFT JOIN habilidades h ON hv.habilidade_id = h.id
+        LEFT JOIN areas_interesse ai ON v.area_interesse_id = ai.id
+        LEFT JOIN candidaturas c ON v.id = c.vaga_id
         ${somenteAtivas ? "WHERE v.status = 'ativo'" : ''}
-        GROUP BY v.id
+        GROUP BY v.id, ai.nome
         ORDER BY v.criado_em DESC
         `
         const { rows } = await db.query(queryText);

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: banco-talentos-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 1d
+      - key: SESSION_TTL_DAYS
+        value: 30
+      - key: DB_CONNECTION_TIMEOUT_MS
+        value: 60000
+      - key: CORS_ORIGINS
+        sync: false

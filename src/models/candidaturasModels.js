@@ -71,8 +71,11 @@ const CandidaturaModels = {
                 c.criado_em as data_inscricao,
                 v.id as vaga_id,
                 v.titulo as vaga_titulo,
+                cand.id as candidato_id,
                 u.nome_completo as candidato_nome,
-                u.email as candidato_email
+                u.email as candidato_email,
+                cand.telefone, cand.cidade, cand.estado, cand.data_nascimento, cand.url_foto,
+                cand.criado_em as candidato_criado_em
         FROM candidaturas c
         JOIN vagas v ON c.vaga_id = v.id
         JOIN candidatos cand ON c.candidato_id = cand.id

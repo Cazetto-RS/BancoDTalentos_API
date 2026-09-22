@@ -173,6 +173,17 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 
 Nunca versionar `.env`. No Windows, confirme que o nome não virou `.env.txt`.
 
+### Migration do Neon
+
+Execute `migrations/001_api_hardening.sql` no SQL Editor do Neon. Antes, verifique duplicidade de e-mail:
+
+```sql
+SELECT LOWER(email), COUNT(*) FROM usuarios
+GROUP BY LOWER(email) HAVING COUNT(*) > 1;
+```
+
+A migration adiciona os campos usados pelo front, área da vaga, estágio, constraints e índices. Ela roda dentro de transação.
+
 ### Scripts
 
 | Comando | Função |
@@ -431,3 +442,5 @@ Os testes atuais cobrem health check, 404, validação, ausência de token e COR
 - Sem trilha de auditoria administrativa.
 - Testes ainda não utilizam PostgreSQL real.
 - Sem OpenAPI/Swagger automático.
+
+Consulte [ALTERACOES.md](ALTERACOES.md) para o histórico técnico da revisão.
