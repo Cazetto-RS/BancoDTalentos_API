@@ -1,10 +1,15 @@
 const errorMiddleware = (erro, req, res, next) => {
-    console.error(erro);
+    if (res.headersSent) return next(erro);
 
-    return res.status(500).json({
+    const status = erro.statusCode || erro.status || 500;
+    const codigo = erro.code || 'INTERNAL_ERROR';
+
+    if (status >= 500) console.error(erro);
+
+    return res.status(status).json({
         sucesso: false,
-        mensagem: "Erro interno no servidor.",
-        codigo: "INTERNAL_ERROR"
+        mensagem: status >= 500 ? 'Erro interno no servidor.' : erro.message,
+        codigo
     });
 };
 

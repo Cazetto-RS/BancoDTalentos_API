@@ -7,7 +7,7 @@ const HabilidadesCandidatosModels = {
         return rows[0] ? rows[0].id : null;
     },
 
-    vincularCandidato: async (candidato_id, habilidade_id, { nivel, nivel_experiencia }) => {
+    vincularCandidato: async (candidato_id, habilidade_id, { nivel, nivel_experiencia }, executor = db) => {
         const queryText = `
         INSERT INTO habilidades_candidato (candidato_id, habilidade_id, nivel, nivel_experiencia)
         VALUES ($1, $2, $3, $4)
@@ -18,11 +18,11 @@ const HabilidadesCandidatosModels = {
         RETURNING *
         `;
 
-        const { rows } = await db.query(queryText, [
+        const { rows } = await executor.query(queryText, [
             candidato_id,
             habilidade_id,
-            nivel || null,
-            nivel_experiencia || null
+            nivel ?? null,
+            nivel_experiencia ?? null
         ]);
         return rows[0];
     },

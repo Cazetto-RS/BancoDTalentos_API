@@ -40,6 +40,7 @@ const HabilidadesControllers = {
                 lista
             );
         } catch (error) {
+            console.error('Erro ao listar habilidades:', error);
             return erro500(res, 'Erro interno no servidor.');
         }
     },
@@ -63,6 +64,7 @@ const HabilidadesControllers = {
             );
             
         } catch (error) {
+            console.error('Erro ao editar habilidade:', error);
             return erro500(res, 'Erro interno no servidor.');
         }
     },
@@ -83,6 +85,7 @@ const HabilidadesControllers = {
                 'Habilidade excluída com sucesso!'
             );
         } catch (error) {
+            console.error('Erro ao excluir habilidade:', error);
             return erro500(res, 'Erro interno no servidor.');
         }
     }

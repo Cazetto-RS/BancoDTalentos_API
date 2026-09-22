@@ -2,7 +2,7 @@ const db = require('../config/database')
 
 const UsuarioModel = {
     buscarPorEmail: async (email) => {
-        const queryText = 'SELECT * FROM usuarios WHERE email = $1';
+        const queryText = 'SELECT * FROM usuarios WHERE LOWER(email) = LOWER($1)';
         const { rows } = await db.query(queryText, [email]);
         return rows[0];
     },
@@ -77,14 +77,14 @@ const UsuarioModel = {
         return rows;
     },
 
-    atualizarInformacoes: async (id, { nome_completo, email, senha_hash }) => {
-        const queryText = `
-        UPDATE usuarios
-        SET nome_completo = COALESCE($1, nome_completo), email = COALESCE($2, email), senha_hash = COALESCE($3, senha_hash)
-        WHERE id = $4
-        RETURNING id, nome_completo, email, cargo, criado_em;  
-    `;
-        const { rows } = await db.query(queryText, [nome_completo || null, email || null, senha_hash || null, id]);
+    atualizarInformacoes: async (id, dados) => {
+        const permitidos = ['nome_completo', 'email', 'senha_hash'];
+        const campos = permitidos.filter((campo) => dados[campo] !== undefined && dados[campo] !== null);
+        if (campos.length === 0) return UsuarioModel.buscarPorId(id);
+        const values = campos.map((campo) => dados[campo]);
+        values.push(id);
+        const sets = campos.map((campo, index) => `${campo} = $${index + 1}`).join(', ');
+        const { rows } = await db.query(`UPDATE usuarios SET ${sets} WHERE id = $${values.length} RETURNING id, nome_completo, email, cargo, criado_em`, values);
         return rows[0];
     },
     deletarUsuario: async (id) => {
@@ -110,7 +110,7 @@ const UsuarioModel = {
     // Área de sessoes
     criarSessao: async (usuario_id, token) => {
 
-        await db.query("DELETE FROM sessoes WHERE criado_em < NOW() - INTERVAL '30 days';")
+            await db.query("DELETE FROM sessoes WHERE criado_em < NOW() - ($1 * INTERVAL '1 day');", [require('../config/env').SESSION_TTL_DAYS])
         await db.query("DELETE FROM sessoes WHERE usuario_id = $1;", [usuario_id])
 
         const queryText = `
@@ -130,6 +130,14 @@ const UsuarioModel = {
         `;
         const values = [nome_completo, email, senha_hash, cargo];
         const { rows } = await db.query(queryText, values);
+        return rows[0];
+    },
+
+    encerrarSessao: async (usuario_id, token) => {
+        const { rows } = await db.query(
+            'DELETE FROM sessoes WHERE usuario_id = $1 AND token = $2 RETURNING id',
+            [usuario_id, token]
+        );
         return rows[0];
     }
 };

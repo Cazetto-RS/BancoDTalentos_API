@@ -2,7 +2,7 @@ const UsuarioModel = require('../models/usuarioModels');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
-const { sucesso, erro400, erro401, erro403, erro404, erro500 } = require('../utils/apiResponse');
+const { sucesso, erro400, erro401, erro403, erro404, erro409, erro500 } = require('../utils/apiResponse');
 
 const usuarioController = {
     registrarCandidato: async (req, res) => {
@@ -15,7 +15,7 @@ const usuarioController = {
 
             const usuarioExistente = await UsuarioModel.buscarPorEmail(email);
             if (usuarioExistente) {
-                return erro400(res, 'Este e-mail já está vinculado a um perfil');
+                return erro409(res, 'Este e-mail já está vinculado a um perfil.');
             }
 
             const salt = await bcrypt.genSalt(10);
@@ -35,6 +35,7 @@ const usuarioController = {
             );
         } catch (error) {
             console.error('Erro ao registrar novo candidato... :', error);
+            if (error.code === '23505') return erro409(res, 'Este e-mail já está vinculado a um perfil.');
             return erro500(res, 'Erro interno no servidor.');
         }
     },
@@ -100,8 +101,7 @@ const usuarioController = {
 
     login: async (req, res) => {
         try {
-            const { email, senderSenha } = req.body;
-            const senhaFornecida = req.body.senha || senderSenha;
+            const { email, senha: senhaFornecida } = req.body;
 
             if (!email || !senhaFornecida) {
                 return erro400(res, 'E-mail e senha são campos obrigatórios.');
@@ -120,7 +120,7 @@ const usuarioController = {
             const token = jwt.sign(
                 { id: usuario.id, email: usuario.email, cargo: usuario.cargo },
                 env.JWT_SECRET,
-                { expiresIn: '1d' }
+                { expiresIn: env.JWT_EXPIRES_IN }
             );
 
             await UsuarioModel.criarSessao(usuario.id, token);
@@ -159,7 +159,7 @@ const usuarioController = {
 
             const usuarioExistente = await UsuarioModel.buscarPorEmail(email);
             if (usuarioExistente) {
-                return erro400(res, 'Já existe um usuário com este e-mail.');
+                return erro409(res, 'Já existe um usuário com este e-mail.');
             }
 
             const salt = await bcrypt.genSalt(10);
@@ -180,6 +180,7 @@ const usuarioController = {
             );
         } catch (error) {
             console.error('Erro ao criar conta coorporativa: ', error);
+            if (error.code === '23505') return erro409(res, 'Já existe um usuário com este e-mail.');
             return erro500(res, 'Erro interno no servidor.');
         }
     },
@@ -230,10 +231,10 @@ const usuarioController = {
         try {
             const { id } = req.params;
             const idUsuarioLogado = req.usuario.id;
-            const senha = req.headers['confirma-senha'];
+            const senha = req.body.senha || req.headers['confirma-senha'];
 
             if (!senha) {
-                return erro400(res, 'A confirmação de senha é obrigatória. Envie o cabeçalho confirma-senha.');
+                return erro400(res, 'A confirmação de senha é obrigatória.');
             }
 
             if (parseInt(id) !== idUsuarioLogado) {
@@ -261,6 +262,17 @@ const usuarioController = {
 
         } catch (error) {
             console.error('Erro ao deletar perfil:', error);
+            return erro500(res, 'Erro interno no servidor.');
+        }
+    },
+
+    logout: async (req, res) => {
+        try {
+            const token = req.headers.authorization.split(' ')[1];
+            await UsuarioModel.encerrarSessao(req.usuario.id, token);
+            return sucesso(res, 200, 'Logout realizado com sucesso.');
+        } catch (error) {
+            console.error('Erro ao realizar logout:', error);
             return erro500(res, 'Erro interno no servidor.');
         }
     }

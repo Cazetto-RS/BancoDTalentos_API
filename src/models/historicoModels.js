@@ -1,7 +1,7 @@
 const db = require('../config/database');
 
 const HistoricoModels = {
-    adicionarExperiencias: async (candidato_id, experiencias) => {
+    adicionarExperiencias: async (candidato_id, experiencias, executor = db) => {
         const resultados = [];
 
         for (const exp of experiencias) {
@@ -15,18 +15,18 @@ const HistoricoModels = {
                 candidato_id,
                 exp.empresa,
                 exp.cargo,
-                exp.descricao || null,
-                exp.data_inicio || null,
-                exp.data_fim || null,
-                exp.atual || false
+                exp.descricao ?? null,
+                exp.data_inicio ?? null,
+                exp.data_fim ?? null,
+                exp.atual ?? false
             ];
-            const { rows } = await db.query(queryText, values);
+            const { rows } = await executor.query(queryText, values);
             resultados.push(rows[0]);
         }
         return resultados;
     },
 
-    adicionarFormacoes: async (candidato_id, formacoes) => {
+    adicionarFormacoes: async (candidato_id, formacoes, executor = db) => {
         const resultados = [];
 
         for (const form of formacoes) {
@@ -40,14 +40,14 @@ const HistoricoModels = {
                 candidato_id,
                 form.curso,
                 form.instituicao,
-                form.semestre_atual || null,
-                form.turno || null,
+                form.semestre_atual ?? null,
+                form.turno ?? null,
                 form.status,
-                form.data_inicio || null,
-                form.data_fim || null,
-                form.url_certificado || null
+                form.data_inicio ?? null,
+                form.data_fim ?? null,
+                form.url_certificado ?? null
             ];
-            const { rows } = await db.query(queryText, values);
+            const { rows } = await executor.query(queryText, values);
             resultados.push(rows[0]);
         }
         return resultados;
@@ -76,7 +76,7 @@ const HistoricoModels = {
         WHERE id = $1 AND candidato_id = $2
         RETURNING *
         `;
-        const values = [id, candidato_id, empresa || null, cargo || null, descricao || null, data_inicio || null, data_fim || null, atual || null];
+        const values = [id, candidato_id, empresa ?? null, cargo ?? null, descricao ?? null, data_inicio ?? null, data_fim ?? null, atual ?? null];
         const { rows } = await db.query(queryText, values);
         return rows[0];
     },
@@ -96,7 +96,7 @@ const HistoricoModels = {
         WHERE id = $1 AND candidato_id = $2
         RETURNING *
         `;
-        const values = [id, candidato_id, curso || null, instituicao || null, semestre_atual || null, turno || null, status || null, data_inicio || null, data_fim || null, url_certificado || null];
+        const values = [id, candidato_id, curso ?? null, instituicao ?? null, semestre_atual ?? null, turno ?? null, status ?? null, data_inicio ?? null, data_fim ?? null, url_certificado ?? null];
         const { rows } = await db.query(queryText, values);
         return rows[0];
     },

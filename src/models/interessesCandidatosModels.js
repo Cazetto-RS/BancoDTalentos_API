@@ -7,14 +7,14 @@ buscarCandidatoIdPorUsuario: async (usuario_id) => {
         return rows[0] ? rows[0].id : null;
     },
 
-    vincularArea: async (candidato_id, interesse_id) => {
+    vincularArea: async (candidato_id, interesse_id, executor = db) => {
         const queryText = `
         INSERT INTO interesses_candidato (candidato_id, interesse_id)
         VALUES ($1, $2)
         ON CONFLICT (candidato_id, interesse_id) DO NOTHING
         RETURNING *
         `;
-        const { rows } = await db.query(queryText, [candidato_id, interesse_id]);
+        const { rows } = await executor.query(queryText, [candidato_id, interesse_id]);
         return rows[0];
     },
 

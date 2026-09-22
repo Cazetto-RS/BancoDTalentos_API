@@ -1,5 +1,5 @@
 const AreasInteresseModels = require('../models/areasInteresseModels');
-const { sucesso, erro, erro400, erro401, erro403, erro404, erro500 } = require('../utils/apiResponse')
+const { sucesso, erro400, erro404, erro500 } = require('../utils/apiResponse')
 
 const AreasInteresseController = {
     criar: async (req, res) => {

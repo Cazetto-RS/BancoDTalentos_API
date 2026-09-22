@@ -3,7 +3,8 @@ const db = require('../config/database')
 const CandidatoModel = {
     buscarPorUsuarioId: async (usuario_id) => {
         const queryText = `
-        SELECT id, usuario_id, telefone, cep, numero_rua, cidade, estado, url_foto, data_nascimento
+        SELECT id, usuario_id, telefone, cep, numero_rua, cidade, estado, url_foto, data_nascimento,
+               linkedin_url, portfolio_url, curriculo_url, cargo_desejado, criado_em
         FROM candidatos
         WHERE usuario_id = $1
         `;
@@ -11,10 +12,10 @@ const CandidatoModel = {
         return rows[0];
     },
 
-    salvarOuAtualizarCandidato: async (usuario_id, {telefone, cep, numero_rua, cidade, estado, url_foto, data_nascimento}) => {
+    salvarOuAtualizarCandidato: async (usuario_id, {telefone, cep, numero_rua, cidade, estado, url_foto, data_nascimento, linkedin_url, portfolio_url, curriculo_url, cargo_desejado}) => {
         const queryText = `
-        INSERT INTO candidatos (usuario_id, telefone, cep, numero_rua, cidade, estado, url_foto, data_nascimento)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO candidatos (usuario_id, telefone, cep, numero_rua, cidade, estado, url_foto, data_nascimento, linkedin_url, portfolio_url, curriculo_url, cargo_desejado)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         ON CONFLICT (usuario_id)
         DO UPDATE SET
             telefone = COALESCE($2, candidatos.telefone),
@@ -23,10 +24,14 @@ const CandidatoModel = {
             cidade = COALESCE($5, candidatos.cidade),
             estado = COALESCE($6, candidatos.estado),
             url_foto = COALESCE($7, candidatos.url_foto),
-            data_nascimento = COALESCE($8, candidatos.data_nascimento)
-        RETURNING id, usuario_id, telefone, cep, numero_rua, cidade, estado, url_foto, data_nascimento;
+            data_nascimento = COALESCE($8, candidatos.data_nascimento),
+            linkedin_url = COALESCE($9, candidatos.linkedin_url),
+            portfolio_url = COALESCE($10, candidatos.portfolio_url),
+            curriculo_url = COALESCE($11, candidatos.curriculo_url),
+            cargo_desejado = COALESCE($12, candidatos.cargo_desejado)
+        RETURNING *;
         `
-        const values = [usuario_id, telefone || null, cep || null, numero_rua || null, cidade || null, estado || null, url_foto || null, data_nascimento || null]
+        const values = [usuario_id, telefone ?? null, cep ?? null, numero_rua ?? null, cidade ?? null, estado ?? null, url_foto ?? null, data_nascimento ?? null, linkedin_url ?? null, portfolio_url ?? null, curriculo_url ?? null, cargo_desejado ?? null]
         const { rows } = await db.query(queryText, values);
         return rows[0];
     },
@@ -43,7 +48,7 @@ const CandidatoModel = {
             arquivo_recomendacao = COALESCE($5, cultura_candidato.arquivo_recomendacao)
         RETURNING id, candidato_id, motivacao, descricao_valores, apresentacao, arquivo_recomendacao;
         `
-        const values = [candidato_id, motivacao || null, descricao_valores || null, apresentacao || null, arquivo_recomendacao || null];
+        const values = [candidato_id, motivacao ?? null, descricao_valores ?? null, apresentacao ?? null, arquivo_recomendacao ?? null];
         const { rows } = await db.query(queryText, values);
         return rows[0];
     },

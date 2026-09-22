@@ -1,42 +1,17 @@
 const CandidaturaModel = require('../models/candidaturasModels');
 const CandidatoModel = require('../models/candidatoModels');
-const { sucesso, erro, erro400, erro401, erro403, erro404, erro500 } = require('../utils/apiResponse')
+const VagaModel = require('../models/vagaModels');
+const { sucesso, erro400, erro403, erro404, erro409, erro500 } = require('../utils/apiResponse')
 
 const CandidaturaController = {
     inscrever: async (req, res) => {
         try {
             if (req.usuario.cargo !== 'candidato') {
-                return res.status(403).json({ error: 'Acesso negado. Apenas candidatos podem se inscrever em vagas.' });
+                return erro403(res, 'Apenas candidatos podem se inscrever em vagas.');
             }
 
             const usuario_id = req.usuario.id;
             const { vaga_id, pretensao_salarial, disponibilidade, preferencia_contrato, preferencia_modelo_trabalho } = req.body;
-
-            if (!vaga_id) {
-                return erro400(
-                    res,
-                    'O campo vaga_id é necessário..'
-                )
-            }
-
-            if (disponibilidade && !['manhã', 'tarde', 'noite', 'integral'].includes(disponibilidade)) {
-                return erro400(
-                    res,
-                    'Disponibilidade inválida. Use: manhã, tarde, noite ou integral.'
-                )
-            }
-            if (preferencia_contrato && !['CLT', 'PJ'].includes(preferencia_contrato)) {
-                return erro400(
-                    res,
-                    'Preferência de contrato inválida. Use: CLT ou PJ.'
-                );
-            }
-            if (preferencia_modelo_trabalho && !['remoto', 'hibrido', 'presencial'].includes(preferencia_modelo_trabalho)) {
-                return erro400(
-                    res,
-                    'Preferência de modelo de trabalho inválida. Use: remoto, hibrido ou presencial.'
-                );
-            }
 
             const candidato = await CandidatoModel.buscarPorUsuarioId(usuario_id);
             if (!candidato) {
@@ -45,6 +20,9 @@ const CandidaturaController = {
                     'Candidato não encontrado.'
                 );
             }
+
+            const vagaAtiva = await VagaModel.buscarAtivaPorId(vaga_id);
+            if (!vagaAtiva) return erro400(res, 'A vaga não existe ou não está aberta para candidaturas.');
 
             const novaInscricao = await CandidaturaModel.inscrever({
                 vaga_id,
@@ -58,12 +36,12 @@ const CandidaturaController = {
             return sucesso(
                 res,
                 201,
-                'Inscrição realizado com sucesso.',
+                'Inscrição realizada com sucesso.',
                 novaInscricao
             );
         } catch (error) {
             console.error('Erro ao se candidatar:', error);
-            if (error.code === '23505') { return erro400(res, 'Você já se cadastrou nesse vaga.'); }
+            if (error.code === '23505') return erro409(res, 'Você já se candidatou a essa vaga.');
             return erro500(res, 'Erro interno no servidor.')
         }
     },
@@ -71,7 +49,7 @@ const CandidaturaController = {
     listarMinhasCandidaturas: async (req, res) => {
         try {
             if (req.usuario.cargo !== 'candidato') {
-                return res.status(403).json({ error: 'Acesso negado.' });
+                return erro403(res, 'Acesso negado.');
             }
 
             const usuario_id = req.usuario.id;
@@ -157,13 +135,6 @@ const CandidaturaController = {
             const { id } = req.params;
             const { status, favorito } = req.body;
 
-            if (status && !['novo', 'em análise', 'em triagem', 'contratado', 'dispensado'].includes(status)) {
-                return erro400 (
-                    res,
-                    'Status inválido.'
-                );
-            }
-
             const atualizada = await CandidaturaModel.atualizarStatus(id, status, favorito);
             if (!atualizada) {
                 return erro404 (
@@ -174,8 +145,8 @@ const CandidaturaController = {
 
             return sucesso(
                 res,
-                201,
-                'Status da candidatura atualizada com sucesso',
+                200,
+                'Status da candidatura atualizado com sucesso.',
                 atualizada
             );
         } catch (error) {

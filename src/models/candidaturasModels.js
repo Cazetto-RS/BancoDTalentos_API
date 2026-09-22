@@ -6,7 +6,7 @@ const CandidaturaModels = {
         INSERT INTO candidaturas (vaga_id, candidato_id, pretensao_salarial, disponibilidade, preferencia_contrato, preferencia_modelo_trabalho)
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *`;
-        const values = [vaga_id, candidato_id, pretensao_salarial || null, disponibilidade || null, preferencia_contrato || null, preferencia_modelo_trabalho || null];
+        const values = [vaga_id, candidato_id, pretensao_salarial ?? null, disponibilidade ?? null, preferencia_contrato ?? null, preferencia_modelo_trabalho ?? null];
         const {rows} = await db.query(queryText, values);
         return rows[0];
     },
@@ -54,7 +54,7 @@ const CandidaturaModels = {
             favorito = COALESCE ($3, favorito)
         WHERE id = $1
         RETURNING *`;
-        const {rows} = await db.query(queryText, [id, status || null, favorito || null]);
+        const {rows} = await db.query(queryText, [id, status ?? null, favorito ?? null]);
         return rows[0];
     },
 

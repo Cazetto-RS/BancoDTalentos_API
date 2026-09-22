@@ -1,5 +1,6 @@
 const HabilidadesCandidatosModels = require('../models/habilidadesCandidatoModels');
 const { sucesso, erro400, erro404, erro500 } = require('../utils/apiResponse');
+const db = require('../config/database');
 
 const HabilidadesCandidatosController = {
     salvarHabilidades: async (req, res) => {
@@ -18,27 +19,22 @@ const HabilidadesCandidatosController = {
                 return erro400(res, 'O campo habilidades deve ser um array válido.');
             }
 
+            const client = await db.pool.connect();
             const salvar = [];
-            for (const hab of habilidades) {
-                if (!hab || typeof hab !== 'object') continue;
-
-                const { habilidade_id, nivel, nivel_experiencia } = hab;
-
-                if (!habilidade_id) continue;
-
-                if (nivel && (nivel < 1 || nivel > 5)) {
-                    return erro400(res, 'O nível da habilidade deve ser entre 1 e 5.');
+            try {
+                await client.query('BEGIN');
+                for (const { habilidade_id, nivel, nivel_experiencia } of habilidades) {
+                    const vinculada = await HabilidadesCandidatosModels.vincularCandidato(
+                        candidato_id, habilidade_id, { nivel, nivel_experiencia }, client
+                    );
+                    salvar.push(vinculada);
                 }
-
-                if (nivel_experiencia && !['junior', 'pleno', 'senior', 'especialista'].includes(nivel_experiencia)) {
-                    return erro400(res, 'O nível de experiência está inválido, campos aceitos: junior, pleno, senior e especialista.');
-                }
-
-                const vinculada = await HabilidadesCandidatosModels.vincularCandidato(candidato_id, habilidade_id, {
-                    nivel,
-                    nivel_experiencia
-                });
-                salvar.push(vinculada);
+                await client.query('COMMIT');
+            } catch (error) {
+                await client.query('ROLLBACK');
+                throw error;
+            } finally {
+                client.release();
             }
 
             return sucesso(

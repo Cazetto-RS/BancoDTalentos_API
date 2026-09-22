@@ -1,5 +1,5 @@
 const CandidatoModel = require('../models/candidatoModels');
-const { sucesso, erro, erro400, erro401, erro403, erro404, erro500 } = require('../utils/apiResponse')
+const { sucesso, erro400, erro404, erro500 } = require('../utils/apiResponse')
 
 const CandidatosController = {
     salvarPerfilBase: async (req, res) => {

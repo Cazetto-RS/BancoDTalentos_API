@@ -1,5 +1,6 @@
 const HistoricoModels = require('../models/historicoModels');
 const CandidatoModels = require('../models/candidatoModels');
+const db = require('../config/database');
 const { sucesso, erro400, erro404, erro500 } = require('../utils/apiResponse');
 
 const HistoricoControllers = {
@@ -17,7 +18,18 @@ const HistoricoControllers = {
                 return erro404(res, 'Perfil do candidato não encontrado.');
             }
 
-            const salvas = await HistoricoModels.adicionarExperiencias(candidato.id, experiencias);
+            const client = await db.pool.connect();
+            let salvas;
+            try {
+                await client.query('BEGIN');
+                salvas = await HistoricoModels.adicionarExperiencias(candidato.id, experiencias, client);
+                await client.query('COMMIT');
+            } catch (error) {
+                await client.query('ROLLBACK');
+                throw error;
+            } finally {
+                client.release();
+            }
 
             return sucesso(
                 res,
@@ -54,7 +66,18 @@ const HistoricoControllers = {
                 }
             }
 
-            const salvas = await HistoricoModels.adicionarFormacoes(candidato.id, formacoes);
+            const client = await db.pool.connect();
+            let salvas;
+            try {
+                await client.query('BEGIN');
+                salvas = await HistoricoModels.adicionarFormacoes(candidato.id, formacoes, client);
+                await client.query('COMMIT');
+            } catch (error) {
+                await client.query('ROLLBACK');
+                throw error;
+            } finally {
+                client.release();
+            }
 
             return sucesso(
                 res,

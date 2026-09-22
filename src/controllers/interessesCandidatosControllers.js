@@ -1,5 +1,6 @@
 const InteressesCandidatoModels = require('../models/interessesCandidatosModels');
 const { sucesso, erro400, erro404, erro500 } = require('../utils/apiResponse');
+const db = require('../config/database');
 
 const interesseCandidatosController = {
     salvarInteresses: async (req, res) => {
@@ -18,14 +19,20 @@ const interesseCandidatosController = {
                 return erro400(res, 'O campo areas_ids deve ser um array válido de IDs.');
             }
 
+            const client = await db.pool.connect();
             const salvas = [];
-            for (const area_id of areas_ids) {
-                if (!area_id) continue;
-
-                const vinculada = await InteressesCandidatoModels.vincularArea(candidato_id, Number(area_id));
-                if (vinculada) {
-                    salvas.push(vinculada);
+            try {
+                await client.query('BEGIN');
+                for (const area_id of areas_ids) {
+                    const vinculada = await InteressesCandidatoModels.vincularArea(candidato_id, area_id, client);
+                    if (vinculada) salvas.push(vinculada);
                 }
+                await client.query('COMMIT');
+            } catch (error) {
+                await client.query('ROLLBACK');
+                throw error;
+            } finally {
+                client.release();
             }
 
             return sucesso(

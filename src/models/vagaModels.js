@@ -1,26 +1,27 @@
 const db = require('../config/database');
 
 const vagasModels = {
-    criarVaga: async ({ titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status }) => {
+    criarVaga: async ({ titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status, area_interesse_id }, executor = db) => {
         const queryText = `
-        INSERT INTO vagas (titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO vagas (titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status, area_interesse_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
         `;
         const values = [
             titulo,
-            descricao || null,
-            modelo_trabalho || null,
-            tipo_contrato || null,
-            salario_min || null,
-            salario_max || null,
-            status || 'ativo'
+            descricao ?? null,
+            modelo_trabalho ?? null,
+            tipo_contrato ?? null,
+            salario_min ?? null,
+            salario_max ?? null,
+            status || 'ativo',
+            area_interesse_id ?? null
         ];
-        const { rows } = await db.query(queryText, values);
+        const { rows } = await executor.query(queryText, values);
         return rows[0];
     },
 
-    buscarTodos: async () => {
+    buscarTodos: async ({ somenteAtivas = false } = {}) => {
         const queryText = `
         SELECT 
                 v.*,
@@ -38,6 +39,7 @@ const vagasModels = {
         FROM vagas v
         LEFT JOIN habilidades_vaga hv ON v.id = hv.vaga_id
         LEFT JOIN habilidades h ON hv.habilidade_id = h.id
+        ${somenteAtivas ? "WHERE v.status = 'ativo'" : ''}
         GROUP BY v.id
         ORDER BY v.criado_em DESC
         `
@@ -45,41 +47,30 @@ const vagasModels = {
         return rows;
     },
 
-    buscarPorId: async (id) => {
+    buscarPorId: async (id, { somenteAtiva = false } = {}) => {
         const queryText = `
-        SELECT * FROM vagas WHERE id = $1;
+        SELECT * FROM vagas WHERE id = $1 ${somenteAtiva ? "AND status = 'ativo'" : ''};
         `
         const { rows } = await db.query(queryText, [id]);
         return rows[0];
     },
 
-    atualizarVaga: async (id, { titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status }) => {
-        const queryText = `
-        UPDATE vagas
-        SET
-            titulo = COALESCE ($2, titulo),
-            descricao = COALESCE ($3, descricao),
-            modelo_trabalho = COALESCE ($4, modelo_trabalho),
-            tipo_contrato = COALESCE ($5, tipo_contrato),
-            salario_min = COALESCE ($6, salario_min),
-            salario_max = COALESCE ($7, salario_max),
-            status = COALESCE ($8, status)  
-        WHERE id = $1
-        RETURNING *
-        `;
+    buscarAtivaPorId: async (id) => {
+        const { rows } = await db.query("SELECT id FROM vagas WHERE id = $1 AND status = 'ativo'", [id]);
+        return rows[0];
+    },
 
-        const values = [
-            id, 
-            titulo || null, 
-            descricao || null, 
-            modelo_trabalho || null, 
-            tipo_contrato || null, 
-            salario_min || null, 
-            salario_max || null, 
-            status || null
-        ];
-
-        const { rows } = await db.query(queryText, values);
+    atualizarVaga: async (id, dados, executor = db) => {
+        const permitidos = ['titulo', 'descricao', 'modelo_trabalho', 'tipo_contrato', 'salario_min', 'salario_max', 'status', 'area_interesse_id'];
+        const campos = permitidos.filter((campo) => Object.hasOwn(dados, campo));
+        if (campos.length === 0) {
+            const { rows } = await executor.query('SELECT * FROM vagas WHERE id = $1', [id]);
+            return rows[0];
+        }
+        const values = campos.map((campo) => dados[campo]);
+        values.push(id);
+        const sets = campos.map((campo, index) => `${campo} = $${index + 1}`).join(', ');
+        const { rows } = await executor.query(`UPDATE vagas SET ${sets} WHERE id = $${values.length} RETURNING *`, values);
         return rows[0];
     },
 
