@@ -431,5 +431,3 @@ Os testes atuais cobrem health check, 404, validação, ausência de token e COR
 - Sem trilha de auditoria administrativa.
 - Testes ainda não utilizam PostgreSQL real.
 - Sem OpenAPI/Swagger automático.
-
-Consulte [ALTERACOES.md](ALTERACOES.md) para o histórico técnico da revisão.
