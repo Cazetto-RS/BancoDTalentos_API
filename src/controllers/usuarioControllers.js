@@ -135,7 +135,8 @@ const usuarioController = {
                         id: usuario.id,
                         nome_completo: usuario.nome_completo,
                         email: usuario.email,
-                        cargo: usuario.cargo
+                        cargo: usuario.cargo,
+                        criado_em: usuario.criado_em
                     }
                 }
             );
@@ -223,6 +224,7 @@ const usuarioController = {
             );
         } catch (error) {
             console.error('Erro ao atualizar perfil.', error);
+            if (error.code === '23505') return erro409(res, 'Este e-mail já está vinculado a outra conta.');
             return erro500(res, 'Erro interno no servidor.');
         }
     },

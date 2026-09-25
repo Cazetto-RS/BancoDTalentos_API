@@ -21,7 +21,7 @@ const vagasModels = {
         return rows[0];
     },
 
-    buscarTodos: async ({ somenteAtivas = false } = {}) => {
+    buscarTodos: async ({ somenteAtivas = false, executor = db } = {}) => {
         const queryText = `
         SELECT 
                 v.*,
@@ -34,7 +34,7 @@ const vagasModels = {
                             'obrigatoria', hv.obrigatoria
                         )
                     ) FILTER (WHERE hv.habilidade_id IS NOT NULL), 
-                    '[]'::json
+                    '[]'::jsonb
                 ) AS habilidades
                 , ai.nome AS area_nome
                 , COUNT(DISTINCT c.id)::int AS candidatos
@@ -47,7 +47,7 @@ const vagasModels = {
         GROUP BY v.id, ai.nome
         ORDER BY v.criado_em DESC
         `
-        const { rows } = await db.query(queryText);
+        const { rows } = await executor.query(queryText);
         return rows;
     },
 

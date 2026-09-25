@@ -71,15 +71,49 @@ const CandidaturaModels = {
                 c.criado_em as data_inscricao,
                 v.id as vaga_id,
                 v.titulo as vaga_titulo,
+                v.area_interesse_id,
+                ai.nome as area_nome,
                 cand.id as candidato_id,
+                cand.usuario_id,
                 u.nome_completo as candidato_nome,
                 u.email as candidato_email,
                 cand.telefone, cand.cidade, cand.estado, cand.data_nascimento, cand.url_foto,
-                cand.criado_em as candidato_criado_em
+                cand.linkedin_url, cand.portfolio_url, cand.curriculo_url, cand.cargo_desejado,
+                cand.criado_em as candidato_criado_em,
+                cc.motivacao, cc.descricao_valores, cc.apresentacao, cc.arquivo_recomendacao,
+                COALESCE((
+                    SELECT JSONB_AGG(JSONB_BUILD_OBJECT(
+                        'nome', h.nome,
+                        'categoria', h.categoria,
+                        'nivel', hc.nivel,
+                        'nivel_experiencia', hc.nivel_experiencia
+                    ) ORDER BY h.nome)
+                    FROM habilidades_candidato hc
+                    JOIN habilidades h ON h.id = hc.habilidade_id
+                    WHERE hc.candidato_id = cand.id
+                ), '[]'::jsonb) AS habilidades,
+                COALESCE((
+                    SELECT JSONB_AGG(ai2.nome ORDER BY ai2.nome)
+                    FROM interesses_candidato ic
+                    JOIN areas_interesse ai2 ON ai2.id = ic.interesse_id
+                    WHERE ic.candidato_id = cand.id
+                ), '[]'::jsonb) AS interesses,
+                COALESCE((
+                    SELECT JSONB_AGG(TO_JSONB(f) ORDER BY f.data_inicio DESC NULLS LAST)
+                    FROM formacoes f
+                    WHERE f.candidato_id = cand.id
+                ), '[]'::jsonb) AS formacoes,
+                COALESCE((
+                    SELECT JSONB_AGG(TO_JSONB(e) ORDER BY e.data_inicio DESC NULLS LAST)
+                    FROM experiencias e
+                    WHERE e.candidato_id = cand.id
+                ), '[]'::jsonb) AS experiencias
         FROM candidaturas c
         JOIN vagas v ON c.vaga_id = v.id
         JOIN candidatos cand ON c.candidato_id = cand.id
         JOIN usuarios u ON cand.usuario_id = u.id
+        LEFT JOIN areas_interesse ai ON v.area_interesse_id = ai.id
+        LEFT JOIN cultura_candidato cc ON cc.candidato_id = cand.id
         ORDER BY c.criado_em DESC;
         `
         const {rows} = await db.query(queryText);

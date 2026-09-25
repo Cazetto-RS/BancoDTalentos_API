@@ -13,7 +13,7 @@
   },
   "keywords": [],
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "license": "ISC",
   "type": "commonjs",

@@ -1,10 +1,11 @@
 const env = require('./env');
 
-const allowedOrigins = env.CORS_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean);
+const normalizeOrigin = (origin) => origin.trim().replace(/^['"]|['"]$/g, '').replace(/\/+$/, '');
+const allowedOrigins = new Set(env.CORS_ORIGINS.split(',').map(normalizeOrigin).filter(Boolean));
 
 const corsOptions = {
     origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+        if (!origin || allowedOrigins.has(normalizeOrigin(origin))) return callback(null, true);
         const error = new Error('Origem não permitida pela política CORS.');
         error.statusCode = 403;
         error.code = 'CORS_FORBIDDEN';

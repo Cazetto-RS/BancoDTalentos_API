@@ -1,7 +1,7 @@
 process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-with-at-least-32-characters';
-process.env.CORS_ORIGINS = 'http://localhost:5173';
+process.env.CORS_ORIGINS = 'http://localhost:5173/';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');

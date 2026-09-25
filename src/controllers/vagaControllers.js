@@ -1,7 +1,14 @@
 const vagaModels = require('../models/vagaModels');
 const habilidadesVagaModels = require('../models/habilidadesVagaModels');
 const db = require('../config/database');
-const { sucesso, erro404, erro500 } = require('../utils/apiResponse');
+const { sucesso, erro400, erro404, erro409, erro500 } = require('../utils/apiResponse');
+
+const responderErroBanco = (res, error, fallback) => {
+    if (error.code === '23503') return erro400(res, 'Área ou habilidade informada não existe.')
+    if (error.code === '23505') return erro409(res, 'Esta vaga já possui um vínculo duplicado.')
+    if (error.code === '23514') return erro400(res, 'Os dados da vaga não atendem às regras permitidas.')
+    return erro500(res, fallback)
+}
 
 const vagaControllers = {
     criarVaga: async (req, res) => {
@@ -27,7 +34,7 @@ const vagaControllers = {
             }
         } catch (error) {
             console.error('Erro ao criar vaga:', error);
-            return erro500(res, 'Erro interno no servidor.');
+            return responderErroBanco(res, error, 'Erro interno no servidor.');
         }
     },
 
@@ -111,7 +118,7 @@ const vagaControllers = {
             }
         } catch (error) {
             console.error('Erro ao editar vaga:', error);
-            return erro500(res, 'Erro interno no servidor.');
+            return responderErroBanco(res, error, 'Erro interno no servidor.');
         }
     },
 

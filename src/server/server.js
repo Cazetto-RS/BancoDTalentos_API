@@ -6,7 +6,7 @@ const db = require('../config/database');
 
 const PORT = env.PORT || 3000;
 
-const server = app.listen(PORT, async () => {
+const server = app.listen(PORT, '0.0.0.0', async () => {
     try {
         await db.query('SELECT 1');
         console.log(`Servidor e banco conectados na porta ${PORT}`);

@@ -17,12 +17,9 @@ const envSchema = z.object({
 
     DB_CONNECTION_TIMEOUT_MS: z.coerce.number().int().min(5000).max(120000).default(60000),
 
-    CORS_ORIGINS: z.string().default('http://localhost:5173,http://localhost:3000'),
+    CORS_ORIGINS: z.string().trim().min(1, 'CORS_ORIGINS não configurada'),
 
-    PORT: z
-        .string()
-        .optional()
-        .default('3000')
+    PORT: z.coerce.number().int().min(1).max(65535).default(3000)
 });
 
 const parseEnv = envSchema.safeParse(process.env);
