@@ -68,6 +68,30 @@ const CandidaturaModels = {
         return rows[0];
     },
 
+    atualizarPeloCandidato: async (id, candidato_id, dados) => {
+        const { rows } = await db.query(`
+            UPDATE candidaturas SET
+                pretensao_salarial = $3,
+                disponibilidade = $4,
+                preferencia_contrato = $5,
+                preferencia_modelo_trabalho = $6
+            WHERE id = $1 AND candidato_id = $2
+              AND status NOT IN ('contratado', 'dispensado')
+            RETURNING *`, [id, candidato_id, dados.pretensao_salarial ?? null,
+            dados.disponibilidade ?? null, dados.preferencia_contrato ?? null,
+            dados.preferencia_modelo_trabalho ?? null]);
+        return rows[0];
+    },
+
+    cancelarPeloCandidato: async (id, candidato_id) => {
+        const { rows } = await db.query(`
+            DELETE FROM candidaturas
+            WHERE id = $1 AND candidato_id = $2
+              AND status NOT IN ('contratado', 'dispensado')
+            RETURNING *`, [id, candidato_id]);
+        return rows[0];
+    },
+
     listarTodas: async () => {
         const queryText = `
         SELECT 

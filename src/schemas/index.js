@@ -117,6 +117,11 @@ const candidatura = {
         preferencia_contrato: opcional(z.enum(['CLT', 'PJ', 'Estágio'])), preferencia_modelo_trabalho: opcional(z.enum(['remoto', 'hibrido', 'presencial']))
     }).strict() }),
     vagaId: envelope({ params: z.object({ vagaId: id }) }),
+    id: envelope({ params: idParam }),
+    editarMinha: envelope({ params: idParam, body: z.object({
+        pretensao_salarial: opcional(dinheiro), disponibilidade: opcional(z.enum(['manhã', 'tarde', 'noite', 'integral'])),
+        preferencia_contrato: opcional(z.enum(['CLT', 'PJ', 'Estágio'])), preferencia_modelo_trabalho: opcional(z.enum(['remoto', 'hibrido', 'presencial']))
+    }).strict() }),
     atualizar: envelope({ params: idParam, body: z.object({ status: z.enum(['novo', 'em análise', 'em triagem', 'contratado', 'dispensado']).optional(), favorito: z.boolean().optional() }).strict().refine((v) => Object.keys(v).length > 0) })
 };
 

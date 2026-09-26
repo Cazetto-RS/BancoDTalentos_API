@@ -133,6 +133,32 @@ const CandidaturaController = {
         }
     },
 
+    atualizarMinhaCandidatura: async (req, res) => {
+        try {
+            const candidato = await CandidatoModel.buscarPorUsuarioId(req.usuario.id);
+            if (!candidato) return erro404(res, 'Candidato não encontrado.');
+            const atualizada = await CandidaturaModel.atualizarPeloCandidato(req.params.id, candidato.id, req.body);
+            if (!atualizada) return erro404(res, 'Candidatura não encontrada ou não pode mais ser alterada.');
+            return sucesso(res, 200, 'Candidatura atualizada com sucesso.', atualizada);
+        } catch (error) {
+            console.error('Erro ao atualizar candidatura:', error);
+            return erro500(res, 'Erro interno no servidor.');
+        }
+    },
+
+    cancelarMinhaCandidatura: async (req, res) => {
+        try {
+            const candidato = await CandidatoModel.buscarPorUsuarioId(req.usuario.id);
+            if (!candidato) return erro404(res, 'Candidato não encontrado.');
+            const cancelada = await CandidaturaModel.cancelarPeloCandidato(req.params.id, candidato.id);
+            if (!cancelada) return erro404(res, 'Candidatura não encontrada ou não pode mais ser cancelada.');
+            return sucesso(res, 200, 'Candidatura cancelada com sucesso.', cancelada);
+        } catch (error) {
+            console.error('Erro ao cancelar candidatura:', error);
+            return erro500(res, 'Erro interno no servidor.');
+        }
+    },
+
     atualizarStatusCandidato: async (req, res) => {
         try {
             if (req.usuario.cargo !== 'rh' && req.usuario.cargo !== 'admin') {
