@@ -26,3 +26,11 @@ test('listagem de vagas mantém o agregado e fallback no mesmo tipo jsonb', asyn
     assert.match(receivedSql, /'\[\]'::jsonb/);
     assert.doesNotMatch(receivedSql, /'\[\]'::json(?!b)/);
 });
+
+test('criação de vaga persiste ícone e cor escolhidos', async () => {
+    let captured;
+    const executor = { query: async (text, values) => { captured = { text, values }; return { rows: [{ id: 1 }] }; } };
+    await vagaModels.criarVaga({ titulo:'Vaga teste', icone:'design', cor:'#FF2685' }, executor);
+    assert.match(captured.text, /icone, cor/);
+    assert.deepEqual(captured.values.slice(-2), ['design', '#FF2685']);
+});

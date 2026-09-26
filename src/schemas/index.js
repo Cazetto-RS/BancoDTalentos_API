@@ -42,6 +42,8 @@ const candidato = {
         telefone: opcional(texto(30)),
         cep: opcional(z.string().trim().regex(/^\d{8}$/, 'CEP deve conter 8 dígitos.')),
         numero_rua: opcional(texto(20)),
+        logradouro: opcional(texto(160)),
+        bairro: opcional(texto(120)),
         cidade: opcional(texto(100)),
         estado: opcional(z.string().trim().toUpperCase().length(2)),
         url_foto: opcional(z.url().max(2048)),
@@ -97,7 +99,9 @@ const vagaBase = z.object({
     titulo: texto(120), descricao: opcional(z.string().trim().max(10000)),
     modelo_trabalho: opcional(z.enum(['remoto', 'hibrido', 'presencial'])), tipo_contrato: opcional(z.enum(['CLT', 'PJ', 'Estágio'])),
     salario_min: opcional(dinheiro), salario_max: opcional(dinheiro), status: z.enum(['ativo', 'pausado', 'fechado']).default('ativo'),
-    area_interesse_id: opcional(id), habilidades: z.array(habilidadeVaga).max(100).optional()
+    area_interesse_id: opcional(id), habilidades: z.array(habilidadeVaga).max(100).optional(),
+    icone: z.enum(['code', 'design', 'data', 'mobile', 'briefcase']).default('code'),
+    cor: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve estar no formato hexadecimal.').default('#169CF9')
 }).strict();
 const baseVaga = vagaBase.refine((v) => v.salario_min == null || v.salario_max == null || v.salario_min <= v.salario_max, { message: 'salario_min não pode ser maior que salario_max.', path: ['salario_max'] });
 
@@ -116,4 +120,8 @@ const candidatura = {
     atualizar: envelope({ params: idParam, body: z.object({ status: z.enum(['novo', 'em análise', 'em triagem', 'contratado', 'dispensado']).optional(), favorito: z.boolean().optional() }).strict().refine((v) => Object.keys(v).length > 0) })
 };
 
-module.exports = { usuario, candidato, historico, catalogo, vaga, candidatura };
+const notificacao = {
+    id: envelope({ params: idParam })
+};
+
+module.exports = { usuario, candidato, historico, catalogo, vaga, candidatura, notificacao };

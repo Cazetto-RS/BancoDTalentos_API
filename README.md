@@ -109,6 +109,15 @@ BancoDTalentos_API/
 
 ## Banco de dados
 
+### Migrações
+
+Execute as migrações em ordem no SQL Editor do Neon:
+
+1. `migrations/001_api_hardening.sql`
+2. `migrations/002_profiles_jobs_notifications.sql`
+
+A segunda migration adiciona endereço detalhado ao perfil, identidade visual às vagas e notificações persistentes.
+
 | Tabela | Conteúdo |
 |---|---|
 | `usuarios` | Identidade, hash e cargo |

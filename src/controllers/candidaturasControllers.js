@@ -1,6 +1,7 @@
 const CandidaturaModel = require('../models/candidaturasModels');
 const CandidatoModel = require('../models/candidatoModels');
 const VagaModel = require('../models/vagaModels');
+const NotificacaoModel = require('../models/notificacaoModels');
 const { sucesso, erro400, erro403, erro404, erro409, erro500 } = require('../utils/apiResponse')
 
 const CandidaturaController = {
@@ -32,6 +33,15 @@ const CandidaturaController = {
                 preferencia_contrato,
                 preferencia_modelo_trabalho
             });
+            try {
+                await NotificacaoModel.criarParaFuncionarios(
+                    'nova_candidatura', 'Nova candidatura recebida',
+                    `Uma nova candidatura foi enviada para a vaga #${vaga_id}.`,
+                    { candidatura_id: novaInscricao.id, vaga_id }
+                );
+            } catch (notificationError) {
+                console.error('Candidatura criada, mas a notificação falhou:', notificationError);
+            }
 
             return sucesso(
                 res,
@@ -135,12 +145,27 @@ const CandidaturaController = {
             const { id } = req.params;
             const { status, favorito } = req.body;
 
+            const anterior = await CandidaturaModel.buscarPorId(id);
+
             const atualizada = await CandidaturaModel.atualizarStatus(id, status, favorito);
             if (!atualizada) {
                 return erro404 (
                     res,
                     'Candidatura não encontrada.'
                 );
+            }
+
+            if (status && anterior && anterior.status !== status) {
+                try {
+                    await NotificacaoModel.criarParaUsuario(
+                        anterior.usuario_id, 'status_candidatura',
+                        'Seu processo seletivo foi atualizado',
+                        `Sua candidatura para “${anterior.vaga_titulo}” foi atualizada para: ${status}.`,
+                        { candidatura_id: Number(id), vaga_id: anterior.vaga_id, status }
+                    );
+                } catch (notificationError) {
+                    console.error('Status atualizado, mas a notificação falhou:', notificationError);
+                }
             }
 
             return sucesso(

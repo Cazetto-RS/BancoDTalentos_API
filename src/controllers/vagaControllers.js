@@ -1,6 +1,7 @@
 const vagaModels = require('../models/vagaModels');
 const habilidadesVagaModels = require('../models/habilidadesVagaModels');
 const db = require('../config/database');
+const NotificacaoModel = require('../models/notificacaoModels');
 const { sucesso, erro400, erro404, erro409, erro500 } = require('../utils/apiResponse');
 
 const responderErroBanco = (res, error, fallback) => {
@@ -109,6 +110,11 @@ const vagaControllers = {
                 }
                 await client.query('COMMIT');
                 const habilidadesAtualizadas = await habilidadesVagaModels.buscarPorVaga(id);
+                if (dadosVaga.status === 'pausado' || dadosVaga.status === 'fechado') {
+                    try {
+                        await NotificacaoModel.criarParaFuncionarios('alerta_vaga', 'Status de vaga alterado', `A vaga “${vagaAtualizada.titulo}” foi marcada como ${dadosVaga.status}.`, { vaga_id: Number(id), status: dadosVaga.status });
+                    } catch (notificationError) { console.error('Vaga atualizada, mas a notificação falhou:', notificationError); }
+                }
                 return sucesso(res, 200, 'Vaga atualizada com sucesso.', { ...vagaAtualizada, habilidades: habilidadesAtualizadas });
             } catch (error) {
                 await client.query('ROLLBACK');

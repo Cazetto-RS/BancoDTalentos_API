@@ -38,6 +38,11 @@ test('rota protegida rejeita requisição sem token', async () => {
     assert.equal(response.body.codigo, 'UNAUTHORIZED');
 });
 
+test('notificações rejeitam requisição sem token', async () => {
+    const response = await request(app).get('/notificacoes').expect(401);
+    assert.equal(response.body.sucesso, false);
+});
+
 test('CORS aceita origem configurada', async () => {
     const response = await request(app).get('/').set('Origin', 'http://localhost:5173').expect(200);
     assert.equal(response.headers['access-control-allow-origin'], 'http://localhost:5173');

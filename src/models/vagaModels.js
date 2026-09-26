@@ -1,10 +1,10 @@
 const db = require('../config/database');
 
 const vagasModels = {
-    criarVaga: async ({ titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status, area_interesse_id }, executor = db) => {
+    criarVaga: async ({ titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status, area_interesse_id, icone, cor }, executor = db) => {
         const queryText = `
-        INSERT INTO vagas (titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status, area_interesse_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO vagas (titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status, area_interesse_id, icone, cor)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *
         `;
         const values = [
@@ -15,7 +15,9 @@ const vagasModels = {
             salario_min ?? null,
             salario_max ?? null,
             status || 'ativo',
-            area_interesse_id ?? null
+            area_interesse_id ?? null,
+            icone || 'code',
+            cor || '#169CF9'
         ];
         const { rows } = await executor.query(queryText, values);
         return rows[0];
@@ -65,7 +67,7 @@ const vagasModels = {
     },
 
     atualizarVaga: async (id, dados, executor = db) => {
-        const permitidos = ['titulo', 'descricao', 'modelo_trabalho', 'tipo_contrato', 'salario_min', 'salario_max', 'status', 'area_interesse_id'];
+        const permitidos = ['titulo', 'descricao', 'modelo_trabalho', 'tipo_contrato', 'salario_min', 'salario_max', 'status', 'area_interesse_id', 'icone', 'cor'];
         const campos = permitidos.filter((campo) => Object.hasOwn(dados, campo));
         if (campos.length === 0) {
             const { rows } = await executor.query('SELECT * FROM vagas WHERE id = $1', [id]);

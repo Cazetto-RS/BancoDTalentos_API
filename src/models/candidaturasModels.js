@@ -58,6 +58,16 @@ const CandidaturaModels = {
         return rows[0];
     },
 
+    buscarPorId: async (id) => {
+        const { rows } = await db.query(`
+            SELECT c.*, cand.usuario_id, v.titulo AS vaga_titulo
+            FROM candidaturas c
+            JOIN candidatos cand ON cand.id = c.candidato_id
+            JOIN vagas v ON v.id = c.vaga_id
+            WHERE c.id = $1`, [id]);
+        return rows[0];
+    },
+
     listarTodas: async () => {
         const queryText = `
         SELECT 
