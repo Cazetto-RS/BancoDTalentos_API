@@ -37,7 +37,7 @@ const CandidaturaController = {
                 await NotificacaoModel.criarParaFuncionarios(
                     'nova_candidatura', 'Nova candidatura recebida',
                     `Uma nova candidatura foi enviada para a vaga #${vaga_id}.`,
-                    { candidatura_id: novaInscricao.id, vaga_id }
+                    { candidatura_id: novaInscricao.id, vaga_id, autor_id:req.usuario.id, autor_nome:req.usuario.nome_completo || req.usuario.email, autor_email:req.usuario.email }
                 );
             } catch (notificationError) {
                 console.error('Candidatura criada, mas a notificação falhou:', notificationError);
@@ -187,7 +187,7 @@ const CandidaturaController = {
                         anterior.usuario_id, 'status_candidatura',
                         'Seu processo seletivo foi atualizado',
                         `Sua candidatura para “${anterior.vaga_titulo}” foi atualizada para: ${status}.`,
-                        { candidatura_id: Number(id), vaga_id: anterior.vaga_id, status }
+                        { candidatura_id: Number(id), vaga_id: anterior.vaga_id, status, autor_id:req.usuario.id, autor_nome:req.usuario.nome_completo || req.usuario.email, autor_email:req.usuario.email }
                     );
                 } catch (notificationError) {
                     console.error('Status atualizado, mas a notificação falhou:', notificationError);

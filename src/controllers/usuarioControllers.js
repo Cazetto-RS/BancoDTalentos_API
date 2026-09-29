@@ -118,7 +118,7 @@ const usuarioController = {
             }
 
             const token = jwt.sign(
-                { id: usuario.id, email: usuario.email, cargo: usuario.cargo },
+                { id: usuario.id, nome_completo: usuario.nome_completo, email: usuario.email, cargo: usuario.cargo },
                 env.JWT_SECRET,
                 { expiresIn: env.JWT_EXPIRES_IN }
             );

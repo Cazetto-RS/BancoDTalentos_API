@@ -1,10 +1,10 @@
 const db = require('../config/database');
 
 const vagasModels = {
-    criarVaga: async ({ titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status, area_interesse_id, icone, cor }, executor = db) => {
+    criarVaga: async ({ titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status, area_interesse_id, icone, cor, visibilidade }, executor = db) => {
         const queryText = `
-        INSERT INTO vagas (titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status, area_interesse_id, icone, cor)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        INSERT INTO vagas (titulo, descricao, modelo_trabalho, tipo_contrato, salario_min, salario_max, status, area_interesse_id, icone, cor, visibilidade)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
         `;
         const values = [
@@ -17,7 +17,8 @@ const vagasModels = {
             status || 'ativo',
             area_interesse_id ?? null,
             icone || 'code',
-            cor || '#169CF9'
+            cor || '#169CF9',
+            visibilidade || 'publica'
         ];
         const { rows } = await executor.query(queryText, values);
         return rows[0];
@@ -45,7 +46,7 @@ const vagasModels = {
         LEFT JOIN habilidades h ON hv.habilidade_id = h.id
         LEFT JOIN areas_interesse ai ON v.area_interesse_id = ai.id
         LEFT JOIN candidaturas c ON v.id = c.vaga_id
-        ${somenteAtivas ? "WHERE v.status = 'ativo'" : ''}
+        ${somenteAtivas ? "WHERE v.status = 'ativo' AND v.visibilidade = 'publica'" : ''}
         GROUP BY v.id, ai.nome
         ORDER BY v.criado_em DESC
         `
@@ -55,7 +56,7 @@ const vagasModels = {
 
     buscarPorId: async (id, { somenteAtiva = false } = {}) => {
         const queryText = `
-        SELECT * FROM vagas WHERE id = $1 ${somenteAtiva ? "AND status = 'ativo'" : ''};
+        SELECT * FROM vagas WHERE id = $1 ${somenteAtiva ? "AND status = 'ativo' AND visibilidade = 'publica'" : ''};
         `
         const { rows } = await db.query(queryText, [id]);
         return rows[0];
@@ -67,7 +68,7 @@ const vagasModels = {
     },
 
     atualizarVaga: async (id, dados, executor = db) => {
-        const permitidos = ['titulo', 'descricao', 'modelo_trabalho', 'tipo_contrato', 'salario_min', 'salario_max', 'status', 'area_interesse_id', 'icone', 'cor'];
+        const permitidos = ['titulo', 'descricao', 'modelo_trabalho', 'tipo_contrato', 'salario_min', 'salario_max', 'status', 'area_interesse_id', 'icone', 'cor', 'visibilidade'];
         const campos = permitidos.filter((campo) => Object.hasOwn(dados, campo));
         if (campos.length === 0) {
             const { rows } = await executor.query('SELECT * FROM vagas WHERE id = $1', [id]);

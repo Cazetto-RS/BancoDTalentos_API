@@ -112,7 +112,7 @@ const vagaControllers = {
                 const habilidadesAtualizadas = await habilidadesVagaModels.buscarPorVaga(id);
                 if (dadosVaga.status === 'pausado' || dadosVaga.status === 'fechado') {
                     try {
-                        await NotificacaoModel.criarParaFuncionarios('alerta_vaga', 'Status de vaga alterado', `A vaga “${vagaAtualizada.titulo}” foi marcada como ${dadosVaga.status}.`, { vaga_id: Number(id), status: dadosVaga.status });
+                        await NotificacaoModel.criarParaFuncionarios('alerta_vaga', 'Status de vaga alterado', `A vaga “${vagaAtualizada.titulo}” foi marcada como ${dadosVaga.status}.`, { vaga_id: Number(id), status: dadosVaga.status, autor_id:req.usuario.id, autor_nome:req.usuario.nome_completo || req.usuario.email, autor_email:req.usuario.email });
                     } catch (notificationError) { console.error('Vaga atualizada, mas a notificação falhou:', notificationError); }
                 }
                 return sucesso(res, 200, 'Vaga atualizada com sucesso.', { ...vagaAtualizada, habilidades: habilidadesAtualizadas });

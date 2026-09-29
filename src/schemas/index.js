@@ -101,7 +101,8 @@ const vagaBase = z.object({
     salario_min: opcional(dinheiro), salario_max: opcional(dinheiro), status: z.enum(['ativo', 'pausado', 'fechado']).default('ativo'),
     area_interesse_id: opcional(id), habilidades: z.array(habilidadeVaga).max(100).optional(),
     icone: z.enum(['code', 'design', 'data', 'mobile', 'briefcase']).default('code'),
-    cor: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve estar no formato hexadecimal.').default('#169CF9')
+    cor: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve estar no formato hexadecimal.').default('#169CF9'),
+    visibilidade: z.enum(['publica', 'privada']).default('publica')
 }).strict();
 const baseVaga = vagaBase.refine((v) => v.salario_min == null || v.salario_max == null || v.salario_min <= v.salario_max, { message: 'salario_min não pode ser maior que salario_max.', path: ['salario_max'] });
 
