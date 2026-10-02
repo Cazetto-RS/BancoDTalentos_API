@@ -34,7 +34,10 @@ const usuario = {
         email: z.email().trim().toLowerCase().max(120),
         senha: z.string().min(8).max(72),
         cargo: z.enum(['admin', 'rh'])
-    }).strict() })
+    }).strict() }),
+    consentimento: envelope({ body: z.object({ consentimento_talentos: z.enum(['sempre', 'somente_candidatura']) }).strict() }),
+    solicitarExclusao: envelope({ body: z.object({ senha: z.string().min(1).max(72) }).strict() }),
+    solicitarExclusaoAdmin: envelope({ params: idParam, body: z.object({ senha: z.string().min(1).max(72) }).strict() })
 };
 
 const candidato = {

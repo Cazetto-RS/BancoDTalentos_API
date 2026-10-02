@@ -111,6 +111,7 @@ const usuarioController = {
             if (!usuario) {
                 return erro401(res, 'E-mail ou senha inválidos.');
             }
+            if (usuario.exclusao_agendada_em) return erro403(res, 'Esta conta está inativa e agendada para exclusão.');
 
             const senhaValida = await bcrypt.compare(senhaFornecida, usuario.senha_hash);
             if (!senhaValida) {
@@ -136,7 +137,8 @@ const usuarioController = {
                         nome_completo: usuario.nome_completo,
                         email: usuario.email,
                         cargo: usuario.cargo,
-                        criado_em: usuario.criado_em
+                        criado_em: usuario.criado_em,
+                        consentimento_talentos: usuario.consentimento_talentos
                     }
                 }
             );
@@ -184,6 +186,21 @@ const usuarioController = {
             if (error.code === '23505') return erro409(res, 'Já existe um usuário com este e-mail.');
             return erro500(res, 'Erro interno no servidor.');
         }
+    },
+    atualizarConsentimento: async (req, res) => {
+        try { const atualizado=await UsuarioModel.atualizarConsentimento(req.usuario.id, req.body.consentimento_talentos); if(!atualizado)return erro404(res,'Candidato não encontrado.'); return sucesso(res,200,'Preferência atualizada.',atualizado); }
+        catch(error){console.error('Erro ao atualizar consentimento:',error);return erro500(res,'Erro interno no servidor.');}
+    },
+    listarBancoTalentos: async (_req,res) => {
+        try{return sucesso(res,200,'Banco de talentos listado.',await UsuarioModel.listarBancoTalentos());}catch(error){console.error(error);return erro500(res,'Erro interno no servidor.');}
+    },
+    solicitarExclusao: async (req,res) => {
+        try { const registro=await UsuarioModel.buscarSenhaHash(req.usuario.id); if(!registro||!(await bcrypt.compare(req.body.senha,registro.senha_hash)))return erro401(res,'Senha inválida.'); const agendada=await UsuarioModel.agendarExclusao(req.usuario.id); return sucesso(res,200,'Conta inativada e agendada para exclusão em 7 dias.',agendada); }
+        catch(error){console.error(error);return erro500(res,'Erro interno no servidor.');}
+    },
+    solicitarExclusaoAdmin: async (req,res) => {
+        try { const registro=await UsuarioModel.buscarSenhaHash(req.usuario.id); if(!registro||!(await bcrypt.compare(req.body.senha,registro.senha_hash)))return erro401(res,'Senha do administrador inválida.'); if(Number(req.params.id)===req.usuario.id)return erro400(res,'Use a exclusão da própria conta nas configurações.'); const agendada=await UsuarioModel.agendarExclusao(req.params.id); if(!agendada)return erro404(res,'Usuário não encontrado.'); return sucesso(res,200,'Conta inativada e agendada para exclusão em 7 dias.',agendada); }
+        catch(error){console.error(error);return erro500(res,'Erro interno no servidor.');}
     },
 
     atualizarInformacoes: async (req, res) => {

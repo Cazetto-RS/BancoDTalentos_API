@@ -2,6 +2,7 @@ const db = require('../config/database')
 
 const UsuarioModel = {
     buscarPorEmail: async (email) => {
+        await UsuarioModel.expurgarContasVencidas();
         const queryText = 'SELECT * FROM usuarios WHERE LOWER(email) = LOWER($1)';
         const { rows } = await db.query(queryText, [email]);
         return rows[0];
@@ -49,7 +50,7 @@ const UsuarioModel = {
 
     buscarPorId: async (id) => {
         const queryText = `
-        SELECT id, nome_completo, email, cargo, criado_em
+        SELECT id, nome_completo, email, cargo, criado_em, consentimento_talentos, exclusao_agendada_em
         FROM usuarios
         WHERE id = $1
         `
@@ -68,6 +69,7 @@ const UsuarioModel = {
     },
 
     buscarTodos: async () => {
+        await UsuarioModel.expurgarContasVencidas();
         const queryText = `
         SELECT id, nome_completo, email, cargo, criado_em
         FROM usuarios
@@ -86,6 +88,29 @@ const UsuarioModel = {
         const sets = campos.map((campo, index) => `${campo} = $${index + 1}`).join(', ');
         const { rows } = await db.query(`UPDATE usuarios SET ${sets} WHERE id = $${values.length} RETURNING id, nome_completo, email, cargo, criado_em`, values);
         return rows[0];
+    },
+    atualizarConsentimento: async (id, consentimento_talentos) => {
+        const { rows } = await db.query('UPDATE usuarios SET consentimento_talentos=$2 WHERE id=$1 AND cargo=\'candidato\' RETURNING id, consentimento_talentos', [id, consentimento_talentos]);
+        return rows[0];
+    },
+    listarBancoTalentos: async () => {
+        await UsuarioModel.expurgarContasVencidas();
+        const { rows } = await db.query(`SELECT u.id, u.nome_completo, u.email, u.consentimento_talentos, u.criado_em,
+            c.telefone, c.cidade, c.estado, c.cargo_desejado,
+            EXISTS(SELECT 1 FROM candidaturas ca WHERE ca.candidato_id=c.id) AS possui_candidatura
+            FROM usuarios u JOIN candidatos c ON c.usuario_id=u.id
+            WHERE u.cargo='candidato' AND u.exclusao_agendada_em IS NULL
+              AND (u.consentimento_talentos='sempre' OR (u.consentimento_talentos='somente_candidatura' AND EXISTS(SELECT 1 FROM candidaturas ca WHERE ca.candidato_id=c.id)))
+            ORDER BY u.criado_em DESC`);
+        return rows;
+    },
+    agendarExclusao: async (id) => {
+        const { rows } = await db.query("UPDATE usuarios SET exclusao_agendada_em=NOW()+INTERVAL '7 days' WHERE id=$1 RETURNING id, exclusao_agendada_em", [id]);
+        await db.query('DELETE FROM sessoes WHERE usuario_id=$1', [id]);
+        return rows[0];
+    },
+    expurgarContasVencidas: async () => {
+        await db.query('DELETE FROM usuarios WHERE exclusao_agendada_em IS NOT NULL AND exclusao_agendada_em <= NOW()');
     },
     deletarUsuario: async (id) => {
         const queryText = `
