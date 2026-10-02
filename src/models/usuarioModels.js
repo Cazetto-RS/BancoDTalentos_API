@@ -96,9 +96,15 @@ const UsuarioModel = {
     listarBancoTalentos: async () => {
         await UsuarioModel.expurgarContasVencidas();
         const { rows } = await db.query(`SELECT u.id, u.nome_completo, u.email, u.consentimento_talentos, u.criado_em,
-            c.telefone, c.cidade, c.estado, c.cargo_desejado,
+            c.telefone, c.cep, c.logradouro, c.numero_rua, c.bairro, c.cidade, c.estado, c.data_nascimento,
+            c.cargo_desejado, c.linkedin_url, c.portfolio_url, c.curriculo_url, c.url_foto,
+            cc.apresentacao, cc.motivacao, cc.descricao_valores,
             EXISTS(SELECT 1 FROM candidaturas ca WHERE ca.candidato_id=c.id) AS possui_candidatura
-            FROM usuarios u JOIN candidatos c ON c.usuario_id=u.id
+            ,COALESCE((SELECT JSONB_AGG(TO_JSONB(e) ORDER BY e.data_inicio DESC) FROM experiencias e WHERE e.candidato_id=c.id),'[]'::jsonb) AS experiencias
+            ,COALESCE((SELECT JSONB_AGG(TO_JSONB(f) ORDER BY f.data_inicio DESC) FROM formacoes f WHERE f.candidato_id=c.id),'[]'::jsonb) AS formacoes
+            ,COALESCE((SELECT JSONB_AGG(JSONB_BUILD_OBJECT('nome',h.nome,'categoria',h.categoria,'nivel',hc.nivel,'nivel_experiencia',hc.nivel_experiencia) ORDER BY h.nome) FROM habilidades_candidato hc JOIN habilidades h ON h.id=hc.habilidade_id WHERE hc.candidato_id=c.id),'[]'::jsonb) AS habilidades
+            ,COALESCE((SELECT JSONB_AGG(ai.nome ORDER BY ai.nome) FROM interesses_candidato ic JOIN areas_interesse ai ON ai.id=ic.interesse_id WHERE ic.candidato_id=c.id),'[]'::jsonb) AS interesses
+            FROM usuarios u JOIN candidatos c ON c.usuario_id=u.id LEFT JOIN cultura_candidato cc ON cc.candidato_id=c.id
             WHERE u.cargo='candidato' AND u.exclusao_agendada_em IS NULL
               AND (u.consentimento_talentos='sempre' OR (u.consentimento_talentos='somente_candidatura' AND EXISTS(SELECT 1 FROM candidaturas ca WHERE ca.candidato_id=c.id)))
             ORDER BY u.criado_em DESC`);
