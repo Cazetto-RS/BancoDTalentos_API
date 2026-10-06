@@ -29,6 +29,15 @@ const NotificacaoController = {
             console.error('Erro ao atualizar notificações:', error);
             return erro500(res, 'Erro interno no servidor.');
         }
+    },
+    apagarTodas: async (req, res) => {
+        try {
+            const quantidade = await NotificacaoModel.apagarTodas(req.usuario.id);
+            return sucesso(res, 200, 'Notificações apagadas com sucesso.', { quantidade });
+        } catch (error) {
+            console.error('Erro ao apagar notificações:', error);
+            return erro500(res, 'Erro interno no servidor.');
+        }
     }
 };
 

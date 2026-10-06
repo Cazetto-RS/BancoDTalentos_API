@@ -27,6 +27,10 @@ const NotificacaoModel = {
         const { rowCount } = await db.query(`UPDATE notificacoes SET lida = true WHERE usuario_id = $1 AND lida = false`, [usuario_id]);
         return rowCount;
     },
+    apagarTodas: async (usuario_id) => {
+        const { rowCount } = await db.query(`DELETE FROM notificacoes WHERE usuario_id = $1`, [usuario_id]);
+        return rowCount;
+    },
     garantirResumoSemanal: async (usuario_id) => {
         const semana = new Date().toISOString().slice(0, 10);
         const { rows: existente } = await db.query(`SELECT id FROM notificacoes WHERE usuario_id=$1 AND tipo='resumo_semanal' AND criado_em >= date_trunc('week', now()) LIMIT 1`, [usuario_id]);

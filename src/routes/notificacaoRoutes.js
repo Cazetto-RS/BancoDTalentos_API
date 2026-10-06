@@ -6,6 +6,7 @@ const { notificacao } = require('../schemas');
 
 router.use(autenticar);
 router.get('/', controller.listar);
+router.delete('/', controller.apagarTodas);
 router.put('/ler-todas', controller.marcarTodasLidas);
 router.put('/:id/ler', validar(notificacao.id), controller.marcarLida);
 
