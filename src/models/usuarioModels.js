@@ -98,7 +98,7 @@ const UsuarioModel = {
         const { rows } = await db.query(`SELECT u.id, u.nome_completo, u.email, u.consentimento_talentos, u.criado_em,
             c.telefone, c.cep, c.logradouro, c.numero_rua, c.bairro, c.cidade, c.estado, c.data_nascimento,
             c.cargo_desejado, c.linkedin_url, c.portfolio_url, c.curriculo_url, c.url_foto,
-            cc.apresentacao, cc.motivacao, cc.descricao_valores,
+            cc.apresentacao, cc.motivacao, cc.descricao_valores, cc.arquivo_recomendacao,
             EXISTS(SELECT 1 FROM candidaturas ca WHERE ca.candidato_id=c.id) AS possui_candidatura
             ,COALESCE((SELECT JSONB_AGG(TO_JSONB(e) ORDER BY e.data_inicio DESC) FROM experiencias e WHERE e.candidato_id=c.id),'[]'::jsonb) AS experiencias
             ,COALESCE((SELECT JSONB_AGG(TO_JSONB(f) ORDER BY f.data_inicio DESC) FROM formacoes f WHERE f.candidato_id=c.id),'[]'::jsonb) AS formacoes
