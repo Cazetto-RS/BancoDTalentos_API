@@ -19,7 +19,20 @@ const envSchema = z.object({
 
     CORS_ORIGINS: z.string().trim().min(1, 'CORS_ORIGINS não configurada'),
 
+    SUPABASE_URL: z.string().url().optional(),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
+    SUPABASE_STORAGE_BUCKET: z.string().trim().min(1).default('banco-talentos'),
+    SUPABASE_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(86400).default(900),
+
     PORT: z.coerce.number().int().min(1).max(65535).default(3000)
+}).superRefine((env, ctx) => {
+    if (env.NODE_ENV !== 'test' && (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY)) {
+        ctx.addIssue({
+            code: 'custom',
+            path: ['SUPABASE_URL'],
+            message: 'SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórias fora dos testes.'
+        });
+    }
 });
 
 const parseEnv = envSchema.safeParse(process.env);

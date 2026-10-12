@@ -31,6 +31,7 @@ const habilidadesCandidatoRoutes = require('./src/routes/habilidadesCandidatosRo
 const areasInteresseRoutes = require('./src/routes/areasInteressesRoutes');
 const interesseCandidatoRoutes = require('./src/routes/interessesCandidatosRoutes');
 const notificacaoRoutes = require('./src/routes/notificacaoRoutes');
+const uploadRoutes = require('./src/routes/uploadRoutes');
 const errorMiddleware = require('./src/middleware/errorMiddleware');
 const notFoundMiddleware = require('./src/middleware/notFoundMiddleware');
 
@@ -46,6 +47,7 @@ app.use('/habilidades-candidatos', habilidadesCandidatoRoutes);
 app.use('/areas-interesse', areasInteresseRoutes);
 app.use('/interesses-candidato', interesseCandidatoRoutes);
 app.use('/notificacoes', notificacaoRoutes);
+app.use('/uploads', uploadRoutes);
 // Alias legado, preservado para não quebrar clientes existentes.
 app.use('/interesse-candidato', interesseCandidatoRoutes);
 

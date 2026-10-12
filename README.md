@@ -64,6 +64,8 @@ O sistema centraliza dados de pessoas interessadas em oportunidades na Point Med
 | Helmet | Cabeçalhos defensivos |
 | express-rate-limit | Limite de tentativas |
 | CORS | Controle de origens |
+| Supabase Storage | Armazenamento privado de fotos e documentos |
+| Multer | Recebimento e validação de `multipart/form-data` |
 | Supertest/Node Test Runner | Testes HTTP |
 | Oxlint | Análise estática |
 
@@ -167,6 +169,10 @@ JWT_EXPIRES_IN=1d
 SESSION_TTL_DAYS=30
 DB_CONNECTION_TIMEOUT_MS=60000
 CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=chave-service-role-usada-somente-na-api
+SUPABASE_STORAGE_BUCKET=banco-talentos
+SUPABASE_SIGNED_URL_TTL_SECONDS=900
 ```
 
 | Variável | Obrigatória | Padrão | Função |
@@ -179,8 +185,47 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 | `SESSION_TTL_DAYS` | Não | `30` | Retenção da sessão |
 | `DB_CONNECTION_TIMEOUT_MS` | Não | `60000` | Timeout PostgreSQL |
 | `CORS_ORIGINS` | Não | localhost | Origens separadas por vírgula |
+| `SUPABASE_URL` | Sim | — | URL do projeto que fornece o Storage |
+| `SUPABASE_SERVICE_ROLE_KEY` | Sim | — | Chave privada usada exclusivamente pela API |
+| `SUPABASE_STORAGE_BUCKET` | Não | `banco-talentos` | Bucket privado dos arquivos |
+| `SUPABASE_SIGNED_URL_TTL_SECONDS` | Não | `900` | Duração dos links temporários, em segundos |
 
 Nunca versionar `.env`. No Windows, confirme que o nome não virou `.env.txt`.
+
+### Configuração do Supabase Storage
+
+1. Crie um projeto no Supabase.
+2. Em **Storage**, crie um bucket chamado `banco-talentos`.
+3. Mantenha o bucket **privado**.
+4. Copie a URL do projeto e a chave `service_role` para as variáveis da API.
+5. Nunca coloque `SUPABASE_SERVICE_ROLE_KEY` no front-end, Vercel ou repositório.
+
+O PostgreSQL continua no Neon. O Supabase é utilizado somente para armazenar arquivos; no banco são persistidos caminhos no formato `storage:usuarios/ID/tipo/arquivo.ext`.
+
+## Uploads privados
+
+Todos os endpoints usam `Authorization: Bearer TOKEN`. O envio usa `multipart/form-data`, com o arquivo no campo `arquivo`.
+
+| Método | Endpoint | Permissão | Uso |
+|---|---|---|---|
+| `POST` | `/uploads/foto` | Candidato | JPG, PNG ou WebP, até 3 MB |
+| `POST` | `/uploads/curriculo` | Candidato | PDF ou DOCX, até 5 MB |
+| `POST` | `/uploads/recomendacao` | Candidato | PDF ou DOCX, até 5 MB |
+| `POST` | `/uploads/certificado` | Candidato | PDF, JPG, PNG ou WebP, até 5 MB |
+| `GET` | `/uploads/url?caminho=...` | Autenticado | Gera URL temporária; RH/admin podem acessar documentos de candidatos |
+| `DELETE` | `/uploads` | Candidato | Exclui um arquivo pertencente ao próprio usuário |
+
+Para substituir um arquivo, envie também o campo textual `arquivo_anterior` no mesmo formulário. A API envia o novo arquivo primeiro e remove o anterior depois, evitando perda em caso de falha.
+
+Exemplo de envio:
+
+```bash
+curl -X POST http://localhost:3000/uploads/curriculo \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -F "arquivo=@curriculo.pdf"
+```
+
+A resposta contém `caminho`. Salve esse valor em `curriculo_url`, `url_foto`, `arquivo_recomendacao` ou `url_certificado`, conforme o tipo. Para exibir ou baixar o arquivo posteriormente, envie o caminho para `/uploads/url`; a URL devolvida expira no tempo configurado.
 
 ### Migration do Neon
 

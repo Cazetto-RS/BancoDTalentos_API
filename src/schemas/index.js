@@ -5,6 +5,10 @@ const opcional = (schema) => schema.optional().nullable();
 const id = z.coerce.number().int().positive();
 const dataIso = z.string().date();
 const dinheiro = z.coerce.number().nonnegative().max(99999999.99);
+const arquivoArmazenado = z.string().trim().max(2048).refine(
+    (value) => z.url().safeParse(value).success || /^storage:usuarios\/\d+\/(foto|curriculo|recomendacao|certificado)\/[a-f0-9-]+\.(jpg|png|webp|pdf|docx)$/.test(value),
+    'Informe uma URL válida ou um arquivo enviado pelo sistema.'
+);
 
 const envelope = ({ body = z.object({}).passthrough(), params = z.object({}).passthrough(), query = z.object({}).passthrough() } = {}) =>
     z.object({ body, params, query });
@@ -49,18 +53,18 @@ const candidato = {
         bairro: opcional(texto(120)),
         cidade: opcional(texto(100)),
         estado: opcional(z.string().trim().toUpperCase().length(2)),
-        url_foto: opcional(z.url().max(2048)),
+        url_foto: opcional(arquivoArmazenado),
         data_nascimento: opcional(dataIso),
         linkedin_url: opcional(z.url().max(2048)),
         portfolio_url: opcional(z.url().max(2048)),
-        curriculo_url: opcional(z.url().max(2048)),
+        curriculo_url: opcional(arquivoArmazenado),
         cargo_desejado: opcional(texto(120))
     }).strict() }),
     cultura: envelope({ body: z.object({
         motivacao: opcional(z.string().trim().max(5000)),
         descricao_valores: opcional(z.string().trim().max(5000)),
         apresentacao: opcional(z.string().trim().max(5000)),
-        arquivo_recomendacao: opcional(z.url().max(2048))
+        arquivo_recomendacao: opcional(arquivoArmazenado)
     }).strict() })
 };
 
@@ -73,7 +77,7 @@ const experiencia = experienciaBase.refine((v) => !v.data_fim || v.data_fim >= v
 const formacaoBase = z.object({
     curso: texto(255), instituicao: texto(255), semestre_atual: opcional(z.coerce.number().int().min(1).max(30)),
     turno: opcional(z.enum(['manhã', 'tarde', 'noite'])), status: z.enum(['cursando', 'concluido', 'trancado']),
-    data_inicio: opcional(dataIso), data_fim: opcional(dataIso), url_certificado: opcional(z.url().max(2048))
+    data_inicio: opcional(dataIso), data_fim: opcional(dataIso), url_certificado: opcional(arquivoArmazenado)
 }).strict();
 const formacao = formacaoBase.refine((v) => !v.data_inicio || !v.data_fim || v.data_fim >= v.data_inicio, { message: 'data_fim deve ser posterior a data_inicio.', path: ['data_fim'] });
 
