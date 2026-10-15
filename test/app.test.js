@@ -15,6 +15,7 @@ test('GET / responde no padrão da API', async () => {
     const response = await request(app).get('/').expect(200);
     assert.equal(response.body.sucesso, true);
     assert.equal(response.body.dados.status, 'ok');
+    assert.equal(response.body.dados.versao, 'email-verification-v3');
 });
 
 test('rota inexistente responde 404 padronizado', async () => {
@@ -52,6 +53,8 @@ test('redefinição exige senha segura e código de seis dígitos', async () => 
 test('rota protegida rejeita requisição sem token', async () => {
     const response = await request(app).get('/candidatos/meu-perfil').expect(401);
     assert.equal(response.body.codigo, 'UNAUTHORIZED');
+    assert.ok(response.body.request_id);
+    assert.equal(response.headers['x-request-id'], response.body.request_id);
 });
 
 test('notificações rejeitam requisição sem token', async () => {

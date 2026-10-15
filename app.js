@@ -12,6 +12,12 @@ app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
+app.use((req, res, next) => {
+    const requestId = req.headers['x-request-id'] || require('node:crypto').randomUUID();
+    req.requestId = requestId;
+    res.setHeader('X-Request-Id', requestId);
+    next();
+});
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -58,7 +64,7 @@ app.use('/interesse-candidato', interesseCandidatoRoutes);
 app.get('/', (req, res) => res.json({
     sucesso: true,
     mensagem: 'API do Banco de Talentos em execução.',
-    dados: { status: 'ok' }
+    dados: { status: 'ok', versao: 'email-verification-v3' }
 }));
 
 app.use(notFoundMiddleware);

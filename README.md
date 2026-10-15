@@ -462,7 +462,7 @@ Somente vagas ativas aceitam inscrição. O acompanhamento aceita `status` e/ou 
 
 ## Arquivos e uploads
 
-A API armazena URLs de foto, currículo, portfólio e recomendação. O upload binário ainda não existe. Foto/PDF deverá ser enviado a Cloudinary, S3, R2 ou Supabase Storage e somente a URL será salva. Não armazene arquivos binários no PostgreSQL.
+A API envia foto e documentos para um bucket privado do Supabase Storage. No PostgreSQL fica apenas o caminho do objeto; a visualização usa URLs assinadas e temporárias.
 
 ## Testes e diagnóstico
 
@@ -478,7 +478,7 @@ Os testes atuais cobrem health check, 404, validação, ausência de token e COR
 
 ## Publicação
 
-1. Aplicar a migration.
+1. Garantir que o usuário do `DATABASE_URL` pode criar e alterar tabelas. O schema de verificação é preparado automaticamente na inicialização.
 2. Configurar variáveis na hospedagem.
 3. Usar `NODE_ENV=production`.
 4. Definir o domínio real em `CORS_ORIGINS`.
@@ -490,8 +490,6 @@ Os testes atuais cobrem health check, 404, validação, ausência de token e COR
 
 ## Limitações atuais
 
-- Upload real de foto/PDF não implementado.
-- Recuperação de senha e confirmação de e-mail não implementadas.
 - Listagens administrativas sem paginação no servidor.
 - Sem trilha de auditoria administrativa.
 - Testes ainda não utilizam PostgreSQL real.
@@ -502,12 +500,17 @@ Consulte [ALTERACOES.md](ALTERACOES.md) para o histórico técnico da revisão.
 
 O cadastro de candidatos exige um código de seis dígitos enviado por e-mail. O código expira, possui limite de tentativas e nunca é armazenado em texto puro. A recuperação de senha usa o mesmo mecanismo e encerra todas as sessões anteriores depois da troca.
 
-Antes de publicar esta versão, execute no Neon, nesta ordem:
+Ao iniciar, a API valida e prepara automaticamente `codigos_email`,
+`cadastros_pendentes` e `usuarios.email_verificado_em`. Se o banco ou essa
+atualização falhar, o processo encerra e o Render mostra o erro real no log.
 
-1. `migrations/20261015_verificacao_email.sql` — caso ainda não tenha executado.
-2. `migrations/20261015_cadastro_pendente.sql` — obrigatório nesta revisão.
+`POST /usuarios/registrar` salva somente um cadastro pendente e envia o código.
+`POST /usuarios/verificar-email` cria os registros em `usuarios` e `candidatos`,
+cria a sessão e devolve o token. Antes da confirmação não existe uma conta.
+Cadastros temporários expiram em 24 horas.
 
-O segundo script cria uma área temporária para cadastros ainda não confirmados. Nenhum registro é criado em `usuarios` ou `candidatos` antes da validação do código. Cadastros temporários expiram em 24 horas.
+Para confirmar que o Render está executando esta revisão, abra a raiz da API. A
+resposta deve conter `"versao":"email-verification-v3"`.
 
 O envio usa o **SMTP do Gmail** com uma senha de aplicativo. Ative a verificação em duas etapas na conta Google, crie uma senha de aplicativo exclusiva para o projeto e configure somente no Render/API:
 
