@@ -33,6 +33,22 @@ test('cadastro inválido retorna detalhes sem acessar o banco', async () => {
     assert.ok(Array.isArray(response.body.erros));
 });
 
+test('confirmação rejeita código fora do padrão sem acessar o banco', async () => {
+    const response = await request(app)
+        .post('/usuarios/verificar-email')
+        .send({ email: 'candidato@example.com', codigo: '123' })
+        .expect(400);
+    assert.equal(response.body.codigo, 'VALIDATION_ERROR');
+});
+
+test('redefinição exige senha segura e código de seis dígitos', async () => {
+    const response = await request(app)
+        .post('/usuarios/redefinir-senha')
+        .send({ email: 'candidato@example.com', codigo: '123456', nova_senha: 'curta' })
+        .expect(400);
+    assert.equal(response.body.codigo, 'VALIDATION_ERROR');
+});
+
 test('rota protegida rejeita requisição sem token', async () => {
     const response = await request(app).get('/candidatos/meu-perfil').expect(401);
     assert.equal(response.body.codigo, 'UNAUTHORIZED');

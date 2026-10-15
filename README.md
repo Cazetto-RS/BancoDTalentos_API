@@ -498,3 +498,39 @@ Os testes atuais cobrem health check, 404, validação, ausência de token e COR
 - Sem OpenAPI/Swagger automático.
 
 Consulte [ALTERACOES.md](ALTERACOES.md) para o histórico técnico da revisão.
+# Verificação de e-mail e recuperação de senha
+
+O cadastro de candidatos exige um código de seis dígitos enviado por e-mail. O código expira, possui limite de tentativas e nunca é armazenado em texto puro. A recuperação de senha usa o mesmo mecanismo e encerra todas as sessões anteriores depois da troca.
+
+Antes de publicar esta versão, execute no Neon o arquivo `migrations/20261015_verificacao_email.sql`. Ele cria a tabela de códigos, adiciona `email_verificado_em` e marca as contas antigas como verificadas.
+
+O envio usa o **SMTP do Gmail** com uma senha de aplicativo. Ative a verificação em duas etapas na conta Google, crie uma senha de aplicativo exclusiva para o projeto e configure somente no Render/API:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=bancodetalentos.exemplo@gmail.com
+SMTP_PASSWORD=senha-de-aplicativo-do-google
+EMAIL_FROM=Banco de Talentos <bancodetalentos.exemplo@gmail.com>
+EMAIL_CODE_SECRET=uma-chave-aleatoria-com-pelo-menos-32-caracteres
+EMAIL_CODE_TTL_MINUTES=10
+EMAIL_CODE_MAX_ATTEMPTS=5
+EMAIL_CODE_RESEND_SECONDS=60
+```
+
+`SMTP_PASSWORD` e `EMAIL_CODE_SECRET` são segredos e nunca devem ser adicionados ao frontend/Vercel. Em `SMTP_PASSWORD`, use a senha de aplicativo de 16 caracteres, não a senha normal da conta Google. Para gerar `EMAIL_CODE_SECRET`:
+
+```bash
+openssl rand -hex 32
+```
+
+Depois de configurar o `.env`, confirme a conexão com `npm run email:check`. Uma resposta `Conexão SMTP válida.` indica que o Gmail aceitou as credenciais.
+
+Novas rotas públicas:
+
+- `POST /usuarios/verificar-email` — recebe `email` e `codigo`.
+- `POST /usuarios/reenviar-codigo` — recebe `email`.
+- `POST /usuarios/esqueci-senha` — recebe `email` e sempre responde de forma genérica.
+- `POST /usuarios/redefinir-senha` — recebe `email`, `codigo` e `nova_senha`.
+

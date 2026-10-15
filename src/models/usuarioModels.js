@@ -48,9 +48,49 @@ const UsuarioModel = {
         }
     },
 
+    atualizarCadastroPendente: async (id, { nome_completo, email, senha_hash }) => {
+        const { rows } = await db.query(
+            `UPDATE usuarios
+             SET nome_completo = $2, email = LOWER($3), senha_hash = $4
+             WHERE id = $1 AND cargo = 'candidato' AND email_verificado_em IS NULL
+             RETURNING id, nome_completo, email, cargo, criado_em`,
+            [id, nome_completo, email, senha_hash]
+        );
+        return rows[0];
+    },
+
+    confirmarEmail: async (id) => {
+        const { rows } = await db.query(
+            `UPDATE usuarios SET email_verificado_em = NOW()
+             WHERE id = $1 AND email_verificado_em IS NULL
+             RETURNING id, nome_completo, email, cargo, email_verificado_em`,
+            [id]
+        );
+        return rows[0];
+    },
+
+    redefinirSenha: async (id, senha_hash) => {
+        const client = await db.pool.connect();
+        try {
+            await client.query('BEGIN');
+            const { rows } = await client.query(
+                'UPDATE usuarios SET senha_hash = $2 WHERE id = $1 RETURNING id',
+                [id, senha_hash]
+            );
+            await client.query('DELETE FROM sessoes WHERE usuario_id = $1', [id]);
+            await client.query('COMMIT');
+            return rows[0];
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    },
+
     buscarPorId: async (id) => {
         const queryText = `
-        SELECT id, nome_completo, email, cargo, criado_em, consentimento_talentos, exclusao_agendada_em
+        SELECT id, nome_completo, email, cargo, criado_em, consentimento_talentos, exclusao_agendada_em, email_verificado_em
         FROM usuarios
         WHERE id = $1
         `
@@ -155,8 +195,8 @@ const UsuarioModel = {
 
     criarUsuarioPorAdmin: async ({ nome_completo, email, senha_hash, cargo }) => {
         const queryText = `
-        INSERT INTO usuarios (nome_completo, email, senha_hash, cargo)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO usuarios (nome_completo, email, senha_hash, cargo, email_verificado_em)
+        VALUES ($1, $2, $3, $4, NOW())
         RETURNING id, nome_completo, email, cargo, criado_em
         `;
         const values = [nome_completo, email, senha_hash, cargo];

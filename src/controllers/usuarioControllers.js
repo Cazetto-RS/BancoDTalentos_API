@@ -2,7 +2,55 @@ const UsuarioModel = require('../models/usuarioModels');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
+const crypto = require('node:crypto');
+const CodigoEmailModel = require('../models/codigoEmailModels');
+const { enviarCodigo } = require('../services/emailService');
 const { sucesso, erro400, erro401, erro403, erro404, erro409, erro500 } = require('../utils/apiResponse');
+
+const gerarCodigo = () => crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
+const hashCodigo = (email, finalidade, codigo) => crypto
+    .createHmac('sha256', env.EMAIL_CODE_SECRET || 'test-email-code-secret-with-32-characters')
+    .update(`${email.toLowerCase()}:${finalidade}:${codigo}`)
+    .digest('hex');
+
+async function criarEEnviarCodigo(usuario, finalidade, ignorarIntervalo = false) {
+    if (!ignorarIntervalo) {
+        const permitido = await CodigoEmailModel.podeReenviar(
+            usuario.email,
+            finalidade,
+            env.EMAIL_CODE_RESEND_SECONDS
+        );
+        if (!permitido) return false;
+    }
+    const codigo = gerarCodigo();
+    const expiraEm = new Date(Date.now() + env.EMAIL_CODE_TTL_MINUTES * 60_000);
+    await CodigoEmailModel.substituir({
+        usuario_id: usuario.id,
+        email: usuario.email,
+        codigo_hash: hashCodigo(usuario.email, finalidade, codigo),
+        finalidade,
+        expira_em: expiraEm
+    });
+    await enviarCodigo({ email: usuario.email, nome: usuario.nome_completo, codigo, finalidade });
+    return true;
+}
+
+async function validarCodigo(email, finalidade, codigo) {
+    const registro = await CodigoEmailModel.buscarAtivo(email, finalidade);
+    if (!registro || new Date(registro.expira_em).getTime() <= Date.now()) {
+        return { valido: false, mensagem: 'Código inválido ou expirado.' };
+    }
+    if (registro.tentativas >= env.EMAIL_CODE_MAX_ATTEMPTS) {
+        return { valido: false, mensagem: 'Limite de tentativas atingido. Solicite outro código.' };
+    }
+    const recebido = Buffer.from(hashCodigo(email, finalidade, codigo), 'hex');
+    const armazenado = Buffer.from(registro.codigo_hash, 'hex');
+    if (recebido.length !== armazenado.length || !crypto.timingSafeEqual(recebido, armazenado)) {
+        await CodigoEmailModel.registrarFalha(registro.id);
+        return { valido: false, mensagem: 'Código inválido ou expirado.' };
+    }
+    return { valido: true, registro };
+}
 
 const usuarioController = {
     registrarCandidato: async (req, res) => {
@@ -13,30 +61,102 @@ const usuarioController = {
                 return erro400(res, 'Nome, e-mail e senha são campos obrigatórios');
             }
 
-            const usuarioExistente = await UsuarioModel.buscarPorEmail(email);
-            if (usuarioExistente) {
+            let usuarioExistente = await UsuarioModel.buscarPorEmail(email);
+            if (usuarioExistente?.email_verificado_em) {
                 return erro409(res, 'Este e-mail já está vinculado a um perfil.');
             }
 
             const salt = await bcrypt.genSalt(10);
             const senha_hash = await bcrypt.hash(senha, salt);
 
-            const novoCandidato = await UsuarioModel.criarCandidato({
-                nome_completo,
-                email,
-                senha_hash
-            });
+            const novoCandidato = usuarioExistente
+                ? await UsuarioModel.atualizarCadastroPendente(usuarioExistente.id, { nome_completo, email, senha_hash })
+                : await UsuarioModel.criarCandidato({ nome_completo, email, senha_hash });
+
+            await criarEEnviarCodigo(novoCandidato, 'verificar_email', true);
 
             return sucesso(
                 res,
                 201,
-                'Cadastro realizado com sucesso!',
-                novoCandidato
+                'Enviamos um código de confirmação para seu e-mail.',
+                { email: novoCandidato.email, expira_em_minutos: env.EMAIL_CODE_TTL_MINUTES }
             );
         } catch (error) {
             console.error('Erro ao registrar novo candidato... :', error);
             if (error.code === '23505') return erro409(res, 'Este e-mail já está vinculado a um perfil.');
             return erro500(res, 'Erro interno no servidor.');
+        }
+    },
+
+    verificarEmail: async (req, res) => {
+        try {
+            const { email, codigo } = req.body;
+            const usuario = await UsuarioModel.buscarPorEmail(email);
+            if (!usuario || usuario.cargo !== 'candidato') return erro400(res, 'Código inválido ou expirado.');
+            if (usuario.email_verificado_em) return sucesso(res, 200, 'E-mail já confirmado.');
+            const resultado = await validarCodigo(email, 'verificar_email', codigo);
+            if (!resultado.valido) return erro400(res, resultado.mensagem);
+            const consumido = await CodigoEmailModel.marcarUsado(resultado.registro.id);
+            if (!consumido) return erro400(res, 'Código inválido ou já utilizado.');
+            await UsuarioModel.confirmarEmail(usuario.id);
+            return sucesso(res, 200, 'E-mail confirmado com sucesso.');
+        } catch (error) {
+            console.error('Erro ao confirmar e-mail:', error);
+            return erro500(res, 'Não foi possível confirmar o e-mail.');
+        }
+    },
+
+    reenviarCodigo: async (req, res) => {
+        try {
+            const usuario = await UsuarioModel.buscarPorEmail(req.body.email);
+            if (!usuario || usuario.cargo !== 'candidato' || usuario.email_verificado_em) {
+                return sucesso(res, 200, 'Se houver um cadastro pendente, enviaremos um novo código.');
+            }
+            const enviado = await criarEEnviarCodigo(usuario, 'verificar_email');
+            if (!enviado) return erro400(res, `Aguarde ${env.EMAIL_CODE_RESEND_SECONDS} segundos antes de reenviar.`);
+            return sucesso(res, 200, 'Novo código enviado.');
+        } catch (error) {
+            console.error('Erro ao reenviar código:', error);
+            return erro500(res, 'Não foi possível enviar o código.');
+        }
+    },
+
+    solicitarRecuperacao: async (req, res) => {
+        const resposta = () => sucesso(res, 200, 'Se o e-mail estiver cadastrado, enviaremos um código de recuperação.');
+        try {
+            const usuario = await UsuarioModel.buscarPorEmail(req.body.email);
+            if (!usuario || !usuario.email_verificado_em || usuario.exclusao_agendada_em) return resposta();
+            const permitido = await CodigoEmailModel.podeReenviar(
+                usuario.email,
+                'redefinir_senha',
+                env.EMAIL_CODE_RESEND_SECONDS
+            );
+            if (!permitido) return resposta();
+            await criarEEnviarCodigo(usuario, 'redefinir_senha', true);
+            return resposta();
+        } catch (error) {
+            console.error('Erro ao solicitar recuperação:', error);
+            return resposta();
+        }
+    },
+
+    redefinirSenha: async (req, res) => {
+        try {
+            const { email, codigo, nova_senha } = req.body;
+            const usuario = await UsuarioModel.buscarPorEmail(email);
+            if (!usuario || !usuario.email_verificado_em || usuario.exclusao_agendada_em) {
+                return erro400(res, 'Código inválido ou expirado.');
+            }
+            const resultado = await validarCodigo(email, 'redefinir_senha', codigo);
+            if (!resultado.valido) return erro400(res, resultado.mensagem);
+            const consumido = await CodigoEmailModel.marcarUsado(resultado.registro.id);
+            if (!consumido) return erro400(res, 'Código inválido ou já utilizado.');
+            const senha_hash = await bcrypt.hash(nova_senha, 10);
+            await UsuarioModel.redefinirSenha(usuario.id, senha_hash);
+            return sucesso(res, 200, 'Senha alterada com sucesso. Entre novamente.');
+        } catch (error) {
+            console.error('Erro ao redefinir senha:', error);
+            return erro500(res, 'Não foi possível alterar a senha.');
         }
     },
 
@@ -116,6 +236,9 @@ const usuarioController = {
             const senhaValida = await bcrypt.compare(senhaFornecida, usuario.senha_hash);
             if (!senhaValida) {
                 return erro401(res, 'E-mail ou senha inválidos.');
+            }
+            if (usuario.cargo === 'candidato' && !usuario.email_verificado_em) {
+                return erro403(res, 'Confirme seu e-mail antes de entrar.');
             }
 
             const token = jwt.sign(

@@ -8,6 +8,10 @@ const { usuario } = require('../schemas');
 // Rotas públicas
 router.post('/registrar', validar(usuario.registrar), usuarioController.registrarCandidato);
 router.post('/login', validar(usuario.login), usuarioController.login);
+router.post('/verificar-email', validar(usuario.verificarEmail), usuarioController.verificarEmail);
+router.post('/reenviar-codigo', validar(usuario.reenviarCodigo), usuarioController.reenviarCodigo);
+router.post('/esqueci-senha', validar(usuario.solicitarRecuperacao), usuarioController.solicitarRecuperacao);
+router.post('/redefinir-senha', validar(usuario.redefinirSenha), usuarioController.redefinirSenha);
 
 // Rotas privadas
 router.put('/atualizar/:id', autenticar, validar(usuario.atualizar), usuarioController.atualizarInformacoes);

@@ -25,6 +25,21 @@ const usuario = {
         email: z.email().trim().toLowerCase().max(120),
         senha: z.string().min(1).max(72)
     }).strict() }),
+    verificarEmail: envelope({ body: z.object({
+        email: z.email().trim().toLowerCase().max(120),
+        codigo: z.string().trim().regex(/^\d{6}$/, 'O código deve ter 6 dígitos.')
+    }).strict() }),
+    reenviarCodigo: envelope({ body: z.object({
+        email: z.email().trim().toLowerCase().max(120)
+    }).strict() }),
+    solicitarRecuperacao: envelope({ body: z.object({
+        email: z.email().trim().toLowerCase().max(120)
+    }).strict() }),
+    redefinirSenha: envelope({ body: z.object({
+        email: z.email().trim().toLowerCase().max(120),
+        codigo: z.string().trim().regex(/^\d{6}$/, 'O código deve ter 6 dígitos.'),
+        nova_senha: z.string().min(8).max(72)
+    }).strict() }),
     atualizar: envelope({ params: idParam, body: z.object({
         nome_completo: texto(120).optional(),
         email: z.email().trim().toLowerCase().max(120).optional(),
