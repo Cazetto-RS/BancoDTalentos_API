@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const crypto = require('node:crypto');
 const CodigoEmailModel = require('../models/codigoEmailModels');
+const CadastroPendenteModel = require('../models/cadastroPendenteModels');
 const { enviarCodigo } = require('../services/emailService');
 const { sucesso, erro400, erro401, erro403, erro404, erro409, erro500 } = require('../utils/apiResponse');
 
@@ -25,7 +26,7 @@ async function criarEEnviarCodigo(usuario, finalidade, ignorarIntervalo = false)
     const codigo = gerarCodigo();
     const expiraEm = new Date(Date.now() + env.EMAIL_CODE_TTL_MINUTES * 60_000);
     await CodigoEmailModel.substituir({
-        usuario_id: usuario.id,
+        usuario_id: usuario.id || null,
         email: usuario.email,
         codigo_hash: hashCodigo(usuario.email, finalidade, codigo),
         finalidade,
@@ -52,6 +53,26 @@ async function validarCodigo(email, finalidade, codigo) {
     return { valido: true, registro };
 }
 
+async function autenticarUsuario(usuario) {
+    const token = jwt.sign(
+        { id: usuario.id, nome_completo: usuario.nome_completo, email: usuario.email, cargo: usuario.cargo },
+        env.JWT_SECRET,
+        { expiresIn: env.JWT_EXPIRES_IN }
+    );
+    await UsuarioModel.criarSessao(usuario.id, token);
+    return {
+        token,
+        usuario: {
+            id: usuario.id,
+            nome_completo: usuario.nome_completo,
+            email: usuario.email,
+            cargo: usuario.cargo,
+            criado_em: usuario.criado_em,
+            consentimento_talentos: usuario.consentimento_talentos
+        }
+    };
+}
+
 const usuarioController = {
     registrarCandidato: async (req, res) => {
         try {
@@ -61,25 +82,23 @@ const usuarioController = {
                 return erro400(res, 'Nome, e-mail e senha são campos obrigatórios');
             }
 
-            let usuarioExistente = await UsuarioModel.buscarPorEmail(email);
-            if (usuarioExistente?.email_verificado_em) {
+            const usuarioExistente = await UsuarioModel.buscarPorEmail(email);
+            if (usuarioExistente) {
                 return erro409(res, 'Este e-mail já está vinculado a um perfil.');
             }
 
             const salt = await bcrypt.genSalt(10);
             const senha_hash = await bcrypt.hash(senha, salt);
 
-            const novoCandidato = usuarioExistente
-                ? await UsuarioModel.atualizarCadastroPendente(usuarioExistente.id, { nome_completo, email, senha_hash })
-                : await UsuarioModel.criarCandidato({ nome_completo, email, senha_hash });
+            const cadastroPendente = await CadastroPendenteModel.salvar({ nome_completo, email, senha_hash });
 
-            await criarEEnviarCodigo(novoCandidato, 'verificar_email', true);
+            await criarEEnviarCodigo(cadastroPendente, 'verificar_email', true);
 
             return sucesso(
                 res,
                 201,
                 'Enviamos um código de confirmação para seu e-mail.',
-                { email: novoCandidato.email, expira_em_minutos: env.EMAIL_CODE_TTL_MINUTES }
+                { email: cadastroPendente.email, expira_em_minutos: env.EMAIL_CODE_TTL_MINUTES }
             );
         } catch (error) {
             console.error('Erro ao registrar novo candidato... :', error);
@@ -91,15 +110,14 @@ const usuarioController = {
     verificarEmail: async (req, res) => {
         try {
             const { email, codigo } = req.body;
-            const usuario = await UsuarioModel.buscarPorEmail(email);
-            if (!usuario || usuario.cargo !== 'candidato') return erro400(res, 'Código inválido ou expirado.');
-            if (usuario.email_verificado_em) return sucesso(res, 200, 'E-mail já confirmado.');
+            const cadastroPendente = await CadastroPendenteModel.buscar(email);
+            if (!cadastroPendente) return erro400(res, 'Código inválido ou expirado.');
             const resultado = await validarCodigo(email, 'verificar_email', codigo);
             if (!resultado.valido) return erro400(res, resultado.mensagem);
-            const consumido = await CodigoEmailModel.marcarUsado(resultado.registro.id);
-            if (!consumido) return erro400(res, 'Código inválido ou já utilizado.');
-            await UsuarioModel.confirmarEmail(usuario.id);
-            return sucesso(res, 200, 'E-mail confirmado com sucesso.');
+            const usuario = await CadastroPendenteModel.confirmar(email, resultado.registro.id);
+            if (!usuario) return erro400(res, 'Código inválido, expirado ou já utilizado.');
+            const autenticacao = await autenticarUsuario(usuario);
+            return sucesso(res, 201, 'E-mail confirmado e conta criada com sucesso.', autenticacao);
         } catch (error) {
             console.error('Erro ao confirmar e-mail:', error);
             return erro500(res, 'Não foi possível confirmar o e-mail.');
@@ -108,11 +126,11 @@ const usuarioController = {
 
     reenviarCodigo: async (req, res) => {
         try {
-            const usuario = await UsuarioModel.buscarPorEmail(req.body.email);
-            if (!usuario || usuario.cargo !== 'candidato' || usuario.email_verificado_em) {
+            const cadastroPendente = await CadastroPendenteModel.buscar(req.body.email);
+            if (!cadastroPendente) {
                 return sucesso(res, 200, 'Se houver um cadastro pendente, enviaremos um novo código.');
             }
-            const enviado = await criarEEnviarCodigo(usuario, 'verificar_email');
+            const enviado = await criarEEnviarCodigo(cadastroPendente, 'verificar_email');
             if (!enviado) return erro400(res, `Aguarde ${env.EMAIL_CODE_RESEND_SECONDS} segundos antes de reenviar.`);
             return sucesso(res, 200, 'Novo código enviado.');
         } catch (error) {

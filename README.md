@@ -502,7 +502,12 @@ Consulte [ALTERACOES.md](ALTERACOES.md) para o histórico técnico da revisão.
 
 O cadastro de candidatos exige um código de seis dígitos enviado por e-mail. O código expira, possui limite de tentativas e nunca é armazenado em texto puro. A recuperação de senha usa o mesmo mecanismo e encerra todas as sessões anteriores depois da troca.
 
-Antes de publicar esta versão, execute no Neon o arquivo `migrations/20261015_verificacao_email.sql`. Ele cria a tabela de códigos, adiciona `email_verificado_em` e marca as contas antigas como verificadas.
+Antes de publicar esta versão, execute no Neon, nesta ordem:
+
+1. `migrations/20261015_verificacao_email.sql` — caso ainda não tenha executado.
+2. `migrations/20261015_cadastro_pendente.sql` — obrigatório nesta revisão.
+
+O segundo script cria uma área temporária para cadastros ainda não confirmados. Nenhum registro é criado em `usuarios` ou `candidatos` antes da validação do código. Cadastros temporários expiram em 24 horas.
 
 O envio usa o **SMTP do Gmail** com uma senha de aplicativo. Ative a verificação em duas etapas na conta Google, crie uma senha de aplicativo exclusiva para o projeto e configure somente no Render/API:
 

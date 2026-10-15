@@ -2,9 +2,15 @@ const env = require('../config/env');
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 50,
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
     secure: env.SMTP_SECURE,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
     auth: {
         user: env.SMTP_USER,
         pass: env.SMTP_PASSWORD
