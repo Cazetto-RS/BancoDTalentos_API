@@ -113,12 +113,8 @@ BancoDTalentos_API/
 
 ### Migrações
 
-Execute as migrações em ordem no SQL Editor do Neon:
-
-1. `migrations/001_api_hardening.sql`
-2. `migrations/002_profiles_jobs_notifications.sql`
-
-A segunda migration adiciona endereço detalhado ao perfil, identidade visual às vagas e notificações persistentes.
+Em um banco vazio, execute `migrations/001_schema_completo.sql` no SQL Editor do Neon.
+Em bancos que já possuem as tabelas principais, a API prepara automaticamente as estruturas de verificação de e-mail ao iniciar.
 
 | Tabela | Conteúdo |
 |---|---|
@@ -229,20 +225,20 @@ A resposta contém `caminho`. Salve esse valor em `curriculo_url`, `url_foto`, `
 
 ### Migration do Neon
 
-Execute `migrations/001_api_hardening.sql` no SQL Editor do Neon. Antes, verifique duplicidade de e-mail:
+Antes de aplicar a migration completa em um banco existente, verifique duplicidade de e-mail:
 
 ```sql
 SELECT LOWER(email), COUNT(*) FROM usuarios
 GROUP BY LOWER(email) HAVING COUNT(*) > 1;
 ```
 
-A migration adiciona os campos usados pelo front, área da vaga, estágio, constraints e índices. Ela roda dentro de transação.
+A migration completa cria o schema necessário para uma instalação nova e roda dentro de transação.
 
 ### Scripts
 
 | Comando | Função |
 |---|---|
-| `npm run dev` | Nodemon |
+| `npm run dev` | Node em modo watch |
 | `npm start` | Produção |
 | `npm run lint` | Análise estática |
 | `npm run check` | Sintaxe JS |
@@ -495,7 +491,6 @@ Os testes atuais cobrem health check, 404, validação, ausência de token e COR
 - Testes ainda não utilizam PostgreSQL real.
 - Sem OpenAPI/Swagger automático.
 
-Consulte [ALTERACOES.md](ALTERACOES.md) para o histórico técnico da revisão.
 # Verificação de e-mail e recuperação de senha
 
 O cadastro de candidatos exige um código de seis dígitos enviado por e-mail. O código expira, possui limite de tentativas e nunca é armazenado em texto puro. A recuperação de senha usa o mesmo mecanismo e encerra todas as sessões anteriores depois da troca.

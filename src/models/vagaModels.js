@@ -62,8 +62,8 @@ const vagasModels = {
         return rows[0];
     },
 
-    buscarAtivaPorId: async (id) => {
-        const { rows } = await db.query("SELECT id FROM vagas WHERE id = $1 AND status = 'ativo'", [id]);
+    buscarAtivaPorId: async (id, executor = db) => {
+        const { rows } = await executor.query("SELECT id FROM vagas WHERE id = $1 AND status = 'ativo' AND visibilidade = 'publica'", [id]);
         return rows[0];
     },
 
@@ -81,11 +81,10 @@ const vagasModels = {
         return rows[0];
     },
 
-    excluirVaga: async (id) => {
-        const queryText = `
-        DELETE FROM vagas WHERE id = $1 RETURNING id
-        `;
-        const { rows } = await db.query(queryText, [id]);
+    excluirVaga: async (id, executor = db) => {
+        await executor.query('DELETE FROM candidaturas WHERE vaga_id = $1', [id]);
+        await executor.query('DELETE FROM habilidades_vaga WHERE vaga_id = $1', [id]);
+        const { rows } = await executor.query('DELETE FROM vagas WHERE id = $1 RETURNING id', [id]);
         return rows[0];
     }
 };

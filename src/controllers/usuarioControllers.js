@@ -6,7 +6,7 @@ const crypto = require('node:crypto');
 const CodigoEmailModel = require('../models/codigoEmailModels');
 const CadastroPendenteModel = require('../models/cadastroPendenteModels');
 const { enviarCodigo } = require('../services/emailService');
-const { sucesso, erro400, erro401, erro403, erro404, erro409, erro500 } = require('../utils/apiResponse');
+const { sucesso, erro, erro400, erro401, erro403, erro404, erro409, erro500 } = require('../utils/apiResponse');
 
 const gerarCodigo = () => crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
 const hashCodigo = (email, finalidade, codigo) => crypto
@@ -103,6 +103,9 @@ const usuarioController = {
         } catch (error) {
             console.error('Erro ao registrar novo candidato... :', error);
             if (error.code === '23505') return erro409(res, 'Este e-mail já está vinculado a um perfil.');
+            if (['EAUTH', 'ETIMEDOUT', 'ECONNECTION', 'EDNS', 'ESOCKET'].includes(error.code)) {
+                return erro(res, 503, 'O serviço de e-mail está temporariamente indisponível. Tente novamente em alguns minutos.', 'EMAIL_UNAVAILABLE');
+            }
             return erro500(res, 'Erro interno no servidor.');
         }
     },
@@ -135,6 +138,9 @@ const usuarioController = {
             return sucesso(res, 200, 'Novo código enviado.');
         } catch (error) {
             console.error('Erro ao reenviar código:', error);
+            if (['EAUTH', 'ETIMEDOUT', 'ECONNECTION', 'EDNS', 'ESOCKET'].includes(error.code)) {
+                return erro(res, 503, 'O serviço de e-mail está temporariamente indisponível. Tente novamente em alguns minutos.', 'EMAIL_UNAVAILABLE');
+            }
             return erro500(res, 'Não foi possível enviar o código.');
         }
     },
@@ -239,7 +245,7 @@ const usuarioController = {
 
     login: async (req, res) => {
         try {
-            const { email, senha: senhaFornecida } = req.body;
+            const { email, senha: senhaFornecida, remember = false } = req.body;
 
             if (!email || !senhaFornecida) {
                 return erro400(res, 'E-mail e senha são campos obrigatórios.');
@@ -262,7 +268,7 @@ const usuarioController = {
             const token = jwt.sign(
                 { id: usuario.id, nome_completo: usuario.nome_completo, email: usuario.email, cargo: usuario.cargo },
                 env.JWT_SECRET,
-                { expiresIn: env.JWT_EXPIRES_IN }
+                { expiresIn: remember ? `${env.SESSION_TTL_DAYS}d` : env.JWT_EXPIRES_IN }
             );
 
             await UsuarioModel.criarSessao(usuario.id, token);
@@ -412,12 +418,13 @@ const usuarioController = {
                 return erro401(res, 'Senha incorreta. Operação de exclusão cancelada.');
             }
 
-            await UsuarioModel.deletarUsuario(id);
+            const agendada = await UsuarioModel.agendarExclusao(id);
 
             return sucesso(
                 res,
                 200,
-                'Sua conta e todos os dados vinculados foram excluídos com sucesso.'
+                'Conta inativada e agendada para exclusão em 7 dias.',
+                agendada
             );
 
         } catch (error) {

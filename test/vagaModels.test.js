@@ -34,3 +34,20 @@ test('criação de vaga persiste ícone e cor escolhidos', async () => {
     assert.match(captured.text, /icone, cor/);
     assert.deepEqual(captured.values.slice(-3), ['design', '#FF2685', 'publica']);
 });
+
+test('candidatura aceita somente vaga ativa e pública', async () => {
+    let receivedSql = '';
+    const executor = { query: async (sql) => { receivedSql = sql; return { rows: [] }; } };
+    await vagaModels.buscarAtivaPorId(4, executor);
+    assert.match(receivedSql, /status = 'ativo'/);
+    assert.match(receivedSql, /visibilidade = 'publica'/);
+});
+
+test('exclusão de vaga remove vínculos antes da vaga', async () => {
+    const statements = [];
+    const executor = { query: async (sql) => { statements.push(sql); return { rows: [{ id: 8 }] }; } };
+    await vagaModels.excluirVaga(8, executor);
+    assert.match(statements[0], /DELETE FROM candidaturas/);
+    assert.match(statements[1], /DELETE FROM habilidades_vaga/);
+    assert.match(statements[2], /DELETE FROM vagas/);
+});

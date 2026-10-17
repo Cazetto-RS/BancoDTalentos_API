@@ -129,13 +129,18 @@ const vagaControllers = {
     },
 
     deletarVaga: async (req, res) => {
+        const client = await db.pool.connect();
         try {
             const { id } = req.params;
-            const deletada = await vagaModels.excluirVaga(id);
+            await client.query('BEGIN');
+            const deletada = await vagaModels.excluirVaga(id, client);
 
             if (!deletada) {
+                await client.query('ROLLBACK');
                 return erro404(res, 'Vaga não encontrada ou já excluída.');
             }
+
+            await client.query('COMMIT');
 
             return sucesso(
                 res,
@@ -143,8 +148,11 @@ const vagaControllers = {
                 'Vaga deletada com sucesso!'
             );
         } catch (error) {
+            await client.query('ROLLBACK');
             console.error('Erro deletar vaga', error);
             return erro500(res, 'Erro interno no servidor.');
+        } finally {
+            client.release();
         }
     }
 };

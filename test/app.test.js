@@ -34,6 +34,14 @@ test('cadastro inválido retorna detalhes sem acessar o banco', async () => {
     assert.ok(Array.isArray(response.body.erros));
 });
 
+test('login valida a opção manter conectado antes de acessar o banco', async () => {
+    const response = await request(app)
+        .post('/usuarios/login')
+        .send({ email: 'candidato@example.com', senha: 'senha-valida', remember: 'sim' })
+        .expect(400);
+    assert.equal(response.body.codigo, 'VALIDATION_ERROR');
+});
+
 test('confirmação rejeita código fora do padrão sem acessar o banco', async () => {
     const response = await request(app)
         .post('/usuarios/verificar-email')

@@ -23,7 +23,8 @@ const usuario = {
     }).strict() }),
     login: envelope({ body: z.object({
         email: z.email().trim().toLowerCase().max(120),
-        senha: z.string().min(1).max(72)
+        senha: z.string().min(1).max(72),
+        remember: z.boolean().optional().default(false)
     }).strict() }),
     verificarEmail: envelope({ body: z.object({
         email: z.email().trim().toLowerCase().max(120),
