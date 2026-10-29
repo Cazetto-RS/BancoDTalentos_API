@@ -25,14 +25,20 @@ async function criarEEnviarCodigo(usuario, finalidade, ignorarIntervalo = false)
     }
     const codigo = gerarCodigo();
     const expiraEm = new Date(Date.now() + env.EMAIL_CODE_TTL_MINUTES * 60_000);
-    await CodigoEmailModel.substituir({
+    const registro = await CodigoEmailModel.substituir({
         usuario_id: usuario.id || null,
         email: usuario.email,
         codigo_hash: hashCodigo(usuario.email, finalidade, codigo),
         finalidade,
         expira_em: expiraEm
     });
-    await enviarCodigo({ email: usuario.email, nome: usuario.nome_completo, codigo, finalidade });
+    try {
+        await enviarCodigo({ email: usuario.email, nome: usuario.nome_completo, codigo, finalidade });
+    } catch (error) {
+        // Invalida somente o código desta tentativa, não um código posterior.
+        await CodigoEmailModel.invalidarSeAtivo(registro.id);
+        throw error;
+    }
     return true;
 }
 
@@ -103,7 +109,7 @@ const usuarioController = {
         } catch (error) {
             console.error('Erro ao registrar novo candidato... :', error);
             if (error.code === '23505') return erro409(res, 'Este e-mail já está vinculado a um perfil.');
-            if (['EAUTH', 'ETIMEDOUT', 'ECONNECTION', 'EDNS', 'ESOCKET'].includes(error.code)) {
+            if (error.code === 'EMAIL_UNAVAILABLE') {
                 return erro(res, 503, 'O serviço de e-mail está temporariamente indisponível. Tente novamente em alguns minutos.', 'EMAIL_UNAVAILABLE');
             }
             return erro500(res, 'Erro interno no servidor.');
@@ -138,7 +144,7 @@ const usuarioController = {
             return sucesso(res, 200, 'Novo código enviado.');
         } catch (error) {
             console.error('Erro ao reenviar código:', error);
-            if (['EAUTH', 'ETIMEDOUT', 'ECONNECTION', 'EDNS', 'ESOCKET'].includes(error.code)) {
+            if (error.code === 'EMAIL_UNAVAILABLE') {
                 return erro(res, 503, 'O serviço de e-mail está temporariamente indisponível. Tente novamente em alguns minutos.', 'EMAIL_UNAVAILABLE');
             }
             return erro500(res, 'Não foi possível enviar o código.');
@@ -160,6 +166,7 @@ const usuarioController = {
             return resposta();
         } catch (error) {
             console.error('Erro ao solicitar recuperação:', error);
+            // Resposta neutra evita diferenciar endereços cadastrados dos inexistentes.
             return resposta();
         }
     },

@@ -507,33 +507,21 @@ Cadastros temporários expiram em 24 horas.
 Para confirmar que o Render está executando esta revisão, abra a raiz da API. A
 resposta deve conter `"versao":"email-verification-v3"`.
 
-O envio usa o **SMTP do Gmail** com uma senha de aplicativo. Ative a verificação em duas etapas na conta Google, crie uma senha de aplicativo exclusiva para o projeto e configure somente no Render/API:
+O envio usa a **API HTTPS da Brevo**, sem dependência das portas SMTP bloqueadas pelo Render gratuito. Crie uma chave API com permissão de e-mails transacionais e autorize o remetente no painel da Brevo. Configure somente na API:
 
 ```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=465
-SMTP_SECURE=true
-SMTP_USER=bancodetalentos.exemplo@gmail.com
-SMTP_PASSWORD=senha-de-aplicativo-do-google
-EMAIL_FROM=Banco de Talentos <bancodetalentos.exemplo@gmail.com>
+EMAIL_PROVIDER=brevo
+BREVO_API_KEY=sua-chave-api-da-brevo
+EMAIL_FROM=remetente-verificado@seudominio.com.br
+EMAIL_FROM_NAME=Banco de Talentos
+TEST_EMAIL=seu-email-para-testes@exemplo.com
 EMAIL_CODE_SECRET=uma-chave-aleatoria-com-pelo-menos-32-caracteres
 EMAIL_CODE_TTL_MINUTES=10
 EMAIL_CODE_MAX_ATTEMPTS=5
 EMAIL_CODE_RESEND_SECONDS=60
 ```
 
-`SMTP_PASSWORD` e `EMAIL_CODE_SECRET` são segredos e nunca devem ser adicionados ao frontend/Vercel. Em `SMTP_PASSWORD`, use a senha de aplicativo de 16 caracteres, não a senha normal da conta Google. Para gerar `EMAIL_CODE_SECRET`:
+A API usa Brevo por HTTPS, sem SMTP. `BREVO_API_KEY` e `EMAIL_CODE_SECRET` são segredos: configure-os somente no backend/Render; nunca envie para o frontend. O endereço `EMAIL_FROM` deve estar autorizado na Brevo. Para gerar `EMAIL_CODE_SECRET` use `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
 
-```bash
-openssl rand -hex 32
-```
-
-Depois de configurar o `.env`, confirme a conexão com `npm run email:check`. Uma resposta `Conexão SMTP válida.` indica que o Gmail aceitou as credenciais.
-
-Novas rotas públicas:
-
-- `POST /usuarios/verificar-email` — recebe `email` e `codigo`.
-- `POST /usuarios/reenviar-codigo` — recebe `email`.
-- `POST /usuarios/esqueci-senha` — recebe `email` e sempre responde de forma genérica.
-- `POST /usuarios/redefinir-senha` — recebe `email`, `codigo` e `nova_senha`.
+Execute `npm run email:check -- seu@email.com` para enviar um código de teste real (ou configure `TEST_EMAIL`). O sucesso significa que a Brevo aceitou a mensagem; confira a entrega na caixa de entrada e no painel da Brevo. O teste consome a cota do provedor.
 

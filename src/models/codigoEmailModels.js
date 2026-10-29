@@ -26,6 +26,13 @@ const CodigoEmailModel = {
         }
     },
 
+    invalidarSeAtivo: async (id) => {
+        await db.query(
+            'UPDATE codigos_email SET usado_em = NOW() WHERE id = $1 AND usado_em IS NULL',
+            [id]
+        );
+    },
+
     buscarAtivo: async (email, finalidade) => {
         const { rows } = await db.query(
             `SELECT * FROM codigos_email
@@ -53,6 +60,7 @@ const CodigoEmailModel = {
             `SELECT NOT EXISTS (
                 SELECT 1 FROM codigos_email
                 WHERE LOWER(email) = LOWER($1) AND finalidade = $2
+                  AND usado_em IS NULL
                   AND criado_em > NOW() - ($3 * INTERVAL '1 second')
             ) AS permitido`,
             [email, finalidade, segundos]

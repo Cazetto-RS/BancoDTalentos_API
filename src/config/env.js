@@ -24,12 +24,10 @@ const envSchema = z.object({
     SUPABASE_STORAGE_BUCKET: z.string().trim().min(1).default('banco-talentos'),
     SUPABASE_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(86400).default(900),
 
-    SMTP_HOST: z.string().trim().min(1).default('smtp.gmail.com'),
-    SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(465),
-    SMTP_SECURE: z.string().trim().default('true').transform((value) => value === 'true'),
-    SMTP_USER: z.email().trim().toLowerCase().optional(),
-    SMTP_PASSWORD: z.string().transform((value) => value.replace(/\s/g, '')).pipe(z.string().length(16)).optional(),
-    EMAIL_FROM: z.string().trim().min(3).optional(),
+    EMAIL_PROVIDER: z.literal('brevo').default('brevo'),
+    BREVO_API_KEY: z.string().trim().min(1).optional(),
+    EMAIL_FROM: z.email().trim().optional(),
+    EMAIL_FROM_NAME: z.string().trim().min(1).default('Banco de Talentos'),
     EMAIL_CODE_SECRET: z.string().min(32).optional(),
     EMAIL_CODE_TTL_MINUTES: z.coerce.number().int().min(5).max(30).default(10),
     EMAIL_CODE_MAX_ATTEMPTS: z.coerce.number().int().min(3).max(10).default(5),
@@ -44,11 +42,11 @@ const envSchema = z.object({
             message: 'SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórias fora dos testes.'
         });
     }
-    if (env.NODE_ENV !== 'test' && (!env.SMTP_USER || !env.SMTP_PASSWORD || !env.EMAIL_FROM || !env.EMAIL_CODE_SECRET)) {
+    if (env.NODE_ENV !== 'test' && (!env.BREVO_API_KEY || !env.EMAIL_FROM || !env.EMAIL_CODE_SECRET)) {
         ctx.addIssue({
             code: 'custom',
-            path: ['SMTP_USER'],
-            message: 'SMTP_USER, SMTP_PASSWORD, EMAIL_FROM e EMAIL_CODE_SECRET são obrigatórias fora dos testes.'
+            path: ['BREVO_API_KEY'],
+            message: 'BREVO_API_KEY, EMAIL_FROM e EMAIL_CODE_SECRET são obrigatórias fora dos testes.'
         });
     }
 });

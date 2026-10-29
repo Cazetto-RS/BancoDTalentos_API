@@ -29,18 +29,14 @@ services:
         value: banco-talentos
       - key: SUPABASE_SIGNED_URL_TTL_SECONDS
         value: 900
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: 465
-      - key: SMTP_SECURE
-        value: true
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASSWORD
+      - key: EMAIL_PROVIDER
+        value: brevo
+      - key: BREVO_API_KEY
         sync: false
       - key: EMAIL_FROM
         sync: false
+      - key: EMAIL_FROM_NAME
+        value: Banco de Talentos
       - key: EMAIL_CODE_SECRET
         generateValue: true
       - key: EMAIL_CODE_TTL_MINUTES
