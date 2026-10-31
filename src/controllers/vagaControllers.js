@@ -1,4 +1,6 @@
 const vagaModels = require('../models/vagaModels');
+const { createToken, validToken } = require('../services/jobShare');
+const env = require('../config/env');
 const habilidadesVagaModels = require('../models/habilidadesVagaModels');
 const db = require('../config/database');
 const NotificacaoModel = require('../models/notificacaoModels');
@@ -12,6 +14,39 @@ const responderErroBanco = (res, error, fallback) => {
 }
 
 const vagaControllers = {
+    gerarCompartilhamento: async (req, res) => {
+        try {
+            const vaga = await vagaModels.buscarPorId(req.params.id);
+            if (!vaga) return erro404(res, 'Vaga não encontrada.');
+            const token = createToken(vaga.id);
+            const path = `/vagas/compartilhar/${vaga.id}/${token}`;
+            return sucesso(res, 200, 'Link de compartilhamento criado.', { path });
+        } catch (error) { console.error('Erro ao gerar compartilhamento:', error); return erro500(res, 'Erro ao gerar link.'); }
+    },
+    redirecionarCompartilhamento: (req, res) => {
+        const { id, token } = req.params;
+        if (!validToken(id, token)) return erro404(res, 'Convite inválido ou expirado.');
+        // O destino é uma origem autorizada e configurada no servidor, nunca um parâmetro do usuário.
+        const origins = env.CORS_ORIGINS.split(',').map(value => value.trim().replace(/^['"]|['"]$/g, ''));
+        const origin = origins.find(value => /^https:\/\//.test(value)) || origins.find(value => /^http:\/\/localhost/.test(value));
+        if (!origin) return erro500(res, 'Endereço público do frontend não configurado.');
+        const target = new URL('/vagas-abertas', origin);
+        target.searchParams.set('vaga', String(id));
+        target.searchParams.set('convite', token);
+        res.set('Cache-Control', 'no-store');
+        res.set('Referrer-Policy', 'no-referrer');
+        return res.redirect(302, target.toString());
+    },
+    buscarPorConvite: async (req, res) => {
+        const { id, token } = req.params;
+        if (!validToken(id, token)) return erro404(res, 'Convite inválido ou expirado.');
+        try {
+            const vaga = await vagaModels.buscarPorId(id);
+            if (!vaga || vaga.status !== 'ativo') return erro404(res, 'Vaga não disponível.');
+            const habilidades = await habilidadesVagaModels.buscarPorVaga(id);
+            return sucesso(res, 200, 'Vaga disponível por convite.', { ...vaga, habilidades: habilidades || [] });
+        } catch (error) { console.error('Erro ao buscar vaga por convite:', error); return erro500(res, 'Erro ao carregar vaga.'); }
+    },
     criarVaga: async (req, res) => {
         try {
             const { habilidades = [], ...dadosVaga } = req.body;

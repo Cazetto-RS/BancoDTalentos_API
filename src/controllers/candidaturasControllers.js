@@ -1,6 +1,7 @@
 const CandidaturaModel = require('../models/candidaturasModels');
 const CandidatoModel = require('../models/candidatoModels');
 const VagaModel = require('../models/vagaModels');
+const { validToken } = require('../services/jobShare');
 const NotificacaoModel = require('../models/notificacaoModels');
 const { sucesso, erro400, erro403, erro404, erro409, erro500 } = require('../utils/apiResponse')
 
@@ -12,7 +13,7 @@ const CandidaturaController = {
             }
 
             const usuario_id = req.usuario.id;
-            const { vaga_id, pretensao_salarial, disponibilidade, preferencia_contrato, preferencia_modelo_trabalho } = req.body;
+            const { vaga_id, pretensao_salarial, disponibilidade, preferencia_contrato, preferencia_modelo_trabalho, convite } = req.body;
 
             const candidato = await CandidatoModel.buscarPorUsuarioId(usuario_id);
             if (!candidato) {
@@ -22,8 +23,10 @@ const CandidaturaController = {
                 );
             }
 
-            const vagaAtiva = await VagaModel.buscarAtivaPorId(vaga_id);
-            if (!vagaAtiva) return erro400(res, 'A vaga não existe ou não está aberta para candidaturas.');
+            const vagaAtiva = convite && validToken(vaga_id, convite)
+                ? await VagaModel.buscarPorId(vaga_id)
+                : await VagaModel.buscarAtivaPorId(vaga_id);
+            if (!vagaAtiva || (vagaAtiva.status && vagaAtiva.status !== 'ativo')) return erro400(res, 'A vaga não existe ou não está aberta para candidaturas.');
 
             const novaInscricao = await CandidaturaModel.inscrever({
                 vaga_id,

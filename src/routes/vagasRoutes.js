@@ -7,6 +7,9 @@ const { vaga } = require('../schemas');
 
 router.get('/', vagaController.buscarTodos);
 router.get('/admin/todas', autenticar, verificarPermissao, vagaController.buscarTodasAdmin);
+router.get('/admin/compartilhar/:id', autenticar, verificarPermissao, vagaController.gerarCompartilhamento);
+router.get('/compartilhar/:id/:token', vagaController.redirecionarCompartilhamento);
+router.get('/convite/:id/:token', autenticar, vagaController.buscarPorConvite);
 router.get('/:id', validar(vaga.id), vagaController.buscarPorId);
 
 router.post('/create', autenticar, verificarPermissao, validar(vaga.criar), vagaController.criarVaga);

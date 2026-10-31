@@ -137,7 +137,7 @@ const vaga = {
 
 const candidatura = {
     inscrever: envelope({ body: z.object({
-        vaga_id: id, pretensao_salarial: opcional(dinheiro), disponibilidade: opcional(z.enum(['manhã', 'tarde', 'noite', 'integral'])),
+        vaga_id: id, convite: z.string().regex(/^[1-9]\d{9,11}\.[a-f0-9]{64}$/).optional(), pretensao_salarial: opcional(dinheiro), disponibilidade: opcional(z.enum(['manhã', 'tarde', 'noite', 'integral'])),
         preferencia_contrato: opcional(z.enum(['CLT', 'PJ', 'Estágio'])), preferencia_modelo_trabalho: opcional(z.enum(['remoto', 'hibrido', 'presencial']))
     }).strict() }),
     vagaId: envelope({ params: z.object({ vagaId: id }) }),
