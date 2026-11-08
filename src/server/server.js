@@ -15,6 +15,7 @@ async function iniciar() {
         await db.query('SELECT 1');
         await ensureEmailSchema();
         await UsuarioModel.expurgarContasVencidas();
+        await db.query("DELETE FROM tentativas_login WHERE ultima_tentativa < NOW() - INTERVAL '1 day'");
         server = app.listen(PORT, '0.0.0.0', () => {
             console.log(`Servidor, banco e schema conectados na porta ${PORT}`);
         });
@@ -29,6 +30,7 @@ void iniciar();
 
 const cleanupTimer = setInterval(() => {
     UsuarioModel.expurgarContasVencidas().catch((error) => console.error('Falha ao excluir contas vencidas:', error));
+    db.query("DELETE FROM tentativas_login WHERE ultima_tentativa < NOW() - INTERVAL '1 day'").catch(error => console.error('Falha ao limpar tentativas de login antigas:', error));
 }, 6 * 60 * 60 * 1000);
 cleanupTimer.unref();
 

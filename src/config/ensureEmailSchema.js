@@ -68,6 +68,18 @@ async function ensureEmailSchema() {
         `);
         await client.query('CREATE INDEX IF NOT EXISTS idx_equipe_pendente_expira ON equipe_pendente (expira_em)');
 
+        // Controle persistente de força bruta (contadores por identificador HMAC).
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS tentativas_login (
+                chave VARCHAR(64) PRIMARY KEY,
+                tentativas SMALLINT NOT NULL DEFAULT 0 CHECK (tentativas BETWEEN 0 AND 5),
+                inicio_janela TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                ultima_tentativa TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                bloqueado_ate TIMESTAMPTZ
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_tentativas_login_limpeza ON tentativas_login (ultima_tentativa)`);
+
         const aplicada = await client.query(
             "SELECT 1 FROM schema_migrations WHERE nome = 'cadastro_pendente_v2'"
         );

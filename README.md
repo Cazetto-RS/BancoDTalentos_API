@@ -525,3 +525,7 @@ A API usa Brevo por HTTPS, sem SMTP. `BREVO_API_KEY` e `EMAIL_CODE_SECRET` são 
 
 Execute `npm run email:check -- seu@email.com` para enviar um código de teste real (ou configure `TEST_EMAIL`). O sucesso significa que a Brevo aceitou a mensagem; confira a entrega na caixa de entrada e no painel da Brevo. O teste consome a cota do provedor.
 
+
+## Proteção contra força bruta (08/11/2026)
+
+A rota `/usuarios/login` registra falhas em `tentativas_login` (índice HMAC do e-mail), bloqueia após cinco erros por 15 minutos e retorna `429 LOGIN_LOCKED` e `retry_after_segundos`. A tabela é criada automaticamente na inicialização ou pela migração idempotente `migrations/003_tentativas_login.sql`. Detalhes em [SEGURANCA_LOGIN.md](SEGURANCA_LOGIN.md). Não publique esta versão sem conferir permissões de migração do banco e os testes de login.

@@ -6,8 +6,23 @@ const crypto = require('node:crypto');
 const CodigoEmailModel = require('../models/codigoEmailModels');
 const CadastroPendenteModel = require('../models/cadastroPendenteModels');
 const EquipePendenteModel = require('../models/equipePendenteModels');
+const LoginTentativaModel = require('../models/loginTentativaModels');
 const { enviarCodigo } = require('../services/emailService');
 const { sucesso, erro, erro400, erro401, erro403, erro404, erro409, erro500 } = require('../utils/apiResponse');
+
+// Resposta neutra para um e-mail não cadastrado, com custo bcrypt comparável.
+const hashDummySenhaPromise = bcrypt.hash('usuario-nao-existente-login-placeholder', 10);
+function respostaBloqueio(res, segundos) {
+    const retryAfter = Math.max(1, segundos);
+    res.setHeader('Retry-After', String(retryAfter));
+    return res.status(429).json({
+        sucesso: false,
+        mensagem: 'Muitas tentativas de senha. Tente novamente em aproximadamente 15 minutos ou recupere sua senha.',
+        codigo: 'LOGIN_LOCKED',
+        retry_after_segundos: retryAfter,
+        request_id: res.req?.requestId
+    });
+}
 
 const gerarCodigo = () => crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
 const hashCodigo = (email, finalidade, codigo) => crypto
@@ -200,6 +215,7 @@ const usuarioController = {
             if (!consumido) return erro400(res, 'Código inválido ou já utilizado.');
             const senha_hash = await bcrypt.hash(nova_senha, 10);
             await UsuarioModel.redefinirSenha(usuario.id, senha_hash);
+            await LoginTentativaModel.limpar(email);
             return sucesso(res, 200, 'Senha alterada com sucesso. Entre novamente.');
         } catch (error) {
             console.error('Erro ao redefinir senha:', error);
@@ -269,21 +285,26 @@ const usuarioController = {
     login: async (req, res) => {
         try {
             const { email, senha: senhaFornecida, remember = false } = req.body;
+            if (!email || !senhaFornecida) return erro400(res, 'E-mail e senha são campos obrigatórios.');
 
-            if (!email || !senhaFornecida) {
-                return erro400(res, 'E-mail e senha são campos obrigatórios.');
-            }
+            const estado = await LoginTentativaModel.consultar(email);
+            if (estado.bloqueado) return respostaBloqueio(res, estado.retryAfterSeconds);
 
             const usuario = await UsuarioModel.buscarPorEmail(email);
-            if (!usuario) {
-                return erro401(res, 'E-mail ou senha inválidos.');
-            }
-            if (usuario.exclusao_agendada_em) return erro403(res, 'Esta conta está inativa e agendada para exclusão.');
-
-            const senhaValida = await bcrypt.compare(senhaFornecida, usuario.senha_hash);
+            const senhaValida = usuario
+                ? await bcrypt.compare(senhaFornecida, usuario.senha_hash)
+                : await bcrypt.compare(senhaFornecida, await hashDummySenhaPromise);
             if (!senhaValida) {
+                const falha = await LoginTentativaModel.registrarFalha(email);
+                if (falha.bloqueado) return respostaBloqueio(res, falha.retryAfterSeconds);
                 return erro401(res, 'E-mail ou senha inválidos.');
             }
+
+            // Outra requisição pode ter atingido o limite enquanto o bcrypt era calculado.
+            const estadoAtual = await LoginTentativaModel.consultar(email);
+            if (estadoAtual.bloqueado) return respostaBloqueio(res, estadoAtual.retryAfterSeconds);
+
+            if (usuario.exclusao_agendada_em) return erro403(res, 'Esta conta está inativa e agendada para exclusão.');
             if (usuario.cargo === 'candidato' && !usuario.email_verificado_em) {
                 return erro403(res, 'Confirme seu e-mail antes de entrar.');
             }
@@ -293,25 +314,17 @@ const usuarioController = {
                 env.JWT_SECRET,
                 { expiresIn: remember ? `${env.SESSION_TTL_DAYS}d` : env.JWT_EXPIRES_IN }
             );
-
             await UsuarioModel.criarSessao(usuario.id, token);
+            await LoginTentativaModel.limpar(email);
 
-            return sucesso(
-                res,
-                200,
-                'Login realizado com sucesso!',
-                {
-                    token,
-                    usuario: {
-                        id: usuario.id,
-                        nome_completo: usuario.nome_completo,
-                        email: usuario.email,
-                        cargo: usuario.cargo,
-                        criado_em: usuario.criado_em,
-                        consentimento_talentos: usuario.consentimento_talentos
-                    }
+            return sucesso(res, 200, 'Login realizado com sucesso!', {
+                token,
+                usuario: {
+                    id: usuario.id, nome_completo: usuario.nome_completo, email: usuario.email,
+                    cargo: usuario.cargo, criado_em: usuario.criado_em,
+                    consentimento_talentos: usuario.consentimento_talentos
                 }
-            );
+            });
         } catch (error) {
             console.error('Erro ao realizar o login', error);
             return erro500(res, 'Erro interno no servidor.');
