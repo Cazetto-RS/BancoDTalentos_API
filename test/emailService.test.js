@@ -43,3 +43,18 @@ test('Brevo com resposta HTTP inválida sinaliza EMAIL_UNAVAILABLE', async () =>
 test('Finalidade desconhecida não dispara envio', async () => {
     await assert.rejects(enviarCodigo({ email: 'x@example.com', codigo: '123456', finalidade: 'outra' }), /Finalidade/);
 });
+
+
+test('Brevo envia código de ativação de RH/Admin sem autenticar o destinatário', async () => {
+    const original = global.fetch;
+    global.fetch = async (_url, options) => {
+        const body = JSON.parse(options.body);
+        assert.match(body.subject, /equipe/);
+        assert.match(body.textContent, /123456/);
+        return { ok: true, json: async () => ({ messageId: 'staff-test' }) };
+    };
+    try {
+        const result = await enviarCodigo({ email: 'rh@example.com', nome: 'Pessoa RH', codigo: '123456', finalidade: 'verificar_equipe' });
+        assert.equal(result.messageId, 'staff-test');
+    } finally { global.fetch = original; }
+});

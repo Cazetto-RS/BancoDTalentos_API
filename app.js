@@ -47,6 +47,7 @@ app.use('/usuarios/verificar-email', authLimiter);
 app.use('/usuarios/reenviar-codigo', authLimiter);
 app.use('/usuarios/esqueci-senha', authLimiter);
 app.use('/usuarios/redefinir-senha', authLimiter);
+app.use('/usuarios/admin/criar-usuario', authLimiter);
 app.use('/usuarios', usuarioRoutes);
 app.use('/candidatos', candidatoRoutes);
 app.use('/historico', historicoRoutes);

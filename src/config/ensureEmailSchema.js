@@ -53,6 +53,21 @@ async function ensureEmailSchema() {
         `);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_cadastros_pendentes_expiracao ON cadastros_pendentes (expira_em)`);
 
+        // Contas RH/Admin não recebem privilégios antes de confirmar o endereço.
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS equipe_pendente (
+                email VARCHAR(120) PRIMARY KEY,
+                nome_completo VARCHAR(120) NOT NULL,
+                senha_hash TEXT NOT NULL,
+                cargo VARCHAR(20) NOT NULL CHECK (cargo IN ('rh', 'admin')),
+                criado_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+                expira_em TIMESTAMPTZ NOT NULL,
+                criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        `);
+        await client.query('CREATE INDEX IF NOT EXISTS idx_equipe_pendente_expira ON equipe_pendente (expira_em)');
+
         const aplicada = await client.query(
             "SELECT 1 FROM schema_migrations WHERE nome = 'cadastro_pendente_v2'"
         );

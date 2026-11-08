@@ -17,13 +17,14 @@ function erroEmail(status) {
 }
 
 async function enviarCodigo({ email, nome, codigo, finalidade }) {
-    if (!['verificar_email', 'redefinir_senha'].includes(finalidade)) {
+    if (!['verificar_email', 'verificar_equipe', 'redefinir_senha'].includes(finalidade)) {
         throw new Error('Finalidade de e-mail inválida.');
     }
-    const verificacao = finalidade === 'verificar_email';
-    const assunto = verificacao ? 'Confirme seu e-mail' : 'Código para redefinir sua senha';
-    const titulo = verificacao ? 'Confirme seu cadastro' : 'Redefinição de senha';
-    const descricao = verificacao
+    const verificacao = finalidade !== 'redefinir_senha';
+    const equipe = finalidade === 'verificar_equipe';
+    const assunto = equipe ? 'Confirme o acesso da equipe — Banco de Talentos' : verificacao ? 'Confirme seu e-mail' : 'Código para redefinir sua senha';
+    const titulo = equipe ? 'Ative sua conta RH/Admin' : verificacao ? 'Confirme seu cadastro' : 'Redefinição de senha';
+    const descricao = equipe ? 'Um administrador cadastrou seu acesso. Use o código para ativar sua conta. Se não reconhece o convite, ignore esta mensagem.' : verificacao
         ? 'Use o código abaixo para confirmar seu e-mail e concluir o cadastro.'
         : 'Use o código abaixo para criar uma nova senha.';
     const html = `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f4f6f8;font-family:Arial,sans-serif;color:#1c2430"><div style="max-width:560px;margin:32px auto;padding:32px;background:#fff;border-radius:12px"><p style="margin:0 0 8px;color:#6b7280">Banco de Talentos</p><h1 style="font-size:24px;margin:0 0 18px">${titulo}</h1><p>Olá, ${escapeHtml(nome || 'candidato')}.</p><p>${descricao}</p><div style="margin:28px 0;padding:18px;text-align:center;background:#eef6ff;border-radius:10px;font-size:32px;font-weight:700;letter-spacing:10px;color:#1267a8">${escapeHtml(codigo)}</div><p style="font-size:14px;color:#6b7280">Este código expira em ${env.EMAIL_CODE_TTL_MINUTES} minutos. Se você não solicitou esta mensagem, pode ignorá-la.</p></div></body></html>`;

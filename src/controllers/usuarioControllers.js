@@ -5,6 +5,7 @@ const env = require('../config/env');
 const crypto = require('node:crypto');
 const CodigoEmailModel = require('../models/codigoEmailModels');
 const CadastroPendenteModel = require('../models/cadastroPendenteModels');
+const EquipePendenteModel = require('../models/equipePendenteModels');
 const { enviarCodigo } = require('../services/emailService');
 const { sucesso, erro, erro400, erro401, erro403, erro404, erro409, erro500 } = require('../utils/apiResponse');
 
@@ -93,6 +94,8 @@ const usuarioController = {
                 return erro409(res, 'Este e-mail já está vinculado a um perfil.');
             }
 
+            if (await EquipePendenteModel.buscar(email)) return erro409(res, 'Já existe uma ativação de equipe pendente para este e-mail.');
+
             const salt = await bcrypt.genSalt(10);
             const senha_hash = await bcrypt.hash(senha, salt);
 
@@ -120,9 +123,19 @@ const usuarioController = {
         try {
             const { email, codigo } = req.body;
             const cadastroPendente = await CadastroPendenteModel.buscar(email);
-            if (!cadastroPendente) return erro400(res, 'Código inválido ou expirado.');
-            const resultado = await validarCodigo(email, 'verificar_email', codigo);
+            const equipePendente = cadastroPendente ? null : await EquipePendenteModel.buscar(email);
+            if (!cadastroPendente && !equipePendente) return erro400(res, 'Código inválido ou expirado.');
+            const finalidade = equipePendente ? 'verificar_equipe' : 'verificar_email';
+            const resultado = await validarCodigo(email, finalidade, codigo);
             if (!resultado.valido) return erro400(res, resultado.mensagem);
+            if (equipePendente) {
+                const conta = await EquipePendenteModel.confirmar(email, resultado.registro.id);
+                if (!conta) return erro400(res, 'Código inválido, expirado ou já utilizado.');
+                // Não autenticar conta privilegiada no navegador do administrador.
+                return sucesso(res, 201, 'E-mail confirmado e conta da equipe ativada.', {
+                    id: conta.id, email: conta.email, cargo: conta.cargo
+                });
+            }
             const usuario = await CadastroPendenteModel.confirmar(email, resultado.registro.id);
             if (!usuario) return erro400(res, 'Código inválido, expirado ou já utilizado.');
             const autenticacao = await autenticarUsuario(usuario);
@@ -136,10 +149,13 @@ const usuarioController = {
     reenviarCodigo: async (req, res) => {
         try {
             const cadastroPendente = await CadastroPendenteModel.buscar(req.body.email);
-            if (!cadastroPendente) {
+            const equipePendente = cadastroPendente ? null : await EquipePendenteModel.buscar(req.body.email);
+            if (!cadastroPendente && !equipePendente) {
                 return sucesso(res, 200, 'Se houver um cadastro pendente, enviaremos um novo código.');
             }
-            const enviado = await criarEEnviarCodigo(cadastroPendente, 'verificar_email');
+            const pendente = cadastroPendente || equipePendente;
+            const finalidade = equipePendente ? 'verificar_equipe' : 'verificar_email';
+            const enviado = await criarEEnviarCodigo(pendente, finalidade);
             if (!enviado) return erro400(res, `Aguarde ${env.EMAIL_CODE_RESEND_SECONDS} segundos antes de reenviar.`);
             return sucesso(res, 200, 'Novo código enviado.');
         } catch (error) {
@@ -319,25 +335,28 @@ const usuarioController = {
                 return erro409(res, 'Já existe um usuário com este e-mail.');
             }
 
+            if (await CadastroPendenteModel.buscar(email)) return erro409(res, 'Já existe um cadastro de candidato pendente para este e-mail.');
+
             const salt = await bcrypt.genSalt(10);
             const senha_hash = await bcrypt.hash(senha, salt);
 
-            const novoUsuario = await UsuarioModel.criarUsuarioPorAdmin({
-                nome_completo,
-                email,
-                senha_hash,
-                cargo
+            // Não cria usuário privilegiado antes da confirmação por e-mail.
+            const pendente = await EquipePendenteModel.salvar({
+                nome_completo, email, senha_hash, cargo, criado_por: req.usuario.id
             });
+            await criarEEnviarCodigo(pendente, 'verificar_equipe', true);
 
-            return sucesso(
-                res,
-                201,
-                `Conta de ${cargo.toUpperCase()} criada com sucesso.`,
-                novoUsuario
-            );
+            return sucesso(res, 202, 'Código de verificação enviado ao e-mail da equipe.', {
+                email: pendente.email,
+                verificacao_pendente: true,
+                requer_verificacao: true,
+                expira_em_minutos: env.EMAIL_CODE_TTL_MINUTES,
+                reenvio_segundos: env.EMAIL_CODE_RESEND_SECONDS
+            });
         } catch (error) {
             console.error('Erro ao criar conta coorporativa: ', error);
             if (error.code === '23505') return erro409(res, 'Já existe um usuário com este e-mail.');
+            if (error.code === 'EMAIL_UNAVAILABLE') return erro(res, 503, 'Serviço de e-mail indisponível. Tente novamente.', 'EMAIL_UNAVAILABLE');
             return erro500(res, 'Erro interno no servidor.');
         }
     },
